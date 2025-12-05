@@ -77,14 +77,6 @@ export default function ItinerariesPage() {
     return (langKey && translations[langKey]) || defaultValue
   }
 
-  // Set CSS variable for animation calculation
-  useEffect(() => {
-    if (tours.length > 0) {
-      const tourCount = tours.length
-      document.documentElement.style.setProperty('--tour-count', tourCount.toString())
-    }
-  }, [tours.length])
-
   useEffect(() => {
     const fetchTours = async () => {
       try {
@@ -132,7 +124,7 @@ export default function ItinerariesPage() {
     }
 
     fetchTours()
-  }, [])
+  }, [t])
 
   const getImageUrl = (tour: Tour) => {
     if (tour.image?.url) {
@@ -205,74 +197,41 @@ export default function ItinerariesPage() {
       <section className="itinerary-tours">
         <div className="container">
           <h2 className="section-title">{t('hero.curatedItineraries') || 'Curated Itineraries'}</h2>
-          <div className="itinerary-tours-wrapper">
-            <div className="itinerary-tours-grid">
-              {tours.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', minWidth: '100%' }}>
-                  <p>No tours available at the moment.</p>
+          <div className="tours-grid">
+            {tours.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', minWidth: '100%' }}>
+                <p>No tours available at the moment.</p>
+              </div>
+            ) : (
+              tours.map((tour) => (
+                <div key={tour.id} className="tour-card">
+                  <div className="tour-card-image">
+                    <Image
+                      src={getImageUrl(tour)}
+                      alt={tour.image?.alt || tour.title}
+                      width={400}
+                      height={300}
+                      className="tour-img"
+                    />
+                    <div className="tour-duration-badge">
+                      {getTranslatedValue(tour.duration, tour.durationTranslations)}
+                    </div>
+                  </div>
+                  <div className="tour-card-content">
+                    <h3>{getTranslatedValue(tour.title, tour.titleTranslations)}</h3>
+                    <p>{getTranslatedValue(tour.description, tour.descriptionTranslations)}</p>
+                    <div className="tour-card-footer">
+                      <Link
+                        href={`/itineraries/${tour.category}/${tour.slug}`}
+                        className="tour-enquire-btn"
+                      >
+                        {t('adventureNature.readMore') || 'Read More'}
+                      </Link>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <>
-                  {tours.map((tour) => (
-                    <div key={tour.id} className="tour-card">
-                      <div className="tour-card-image">
-                        <Image
-                          src={getImageUrl(tour)}
-                          alt={tour.image?.alt || tour.title}
-                          width={400}
-                          height={300}
-                          className="tour-img"
-                        />
-                        <div className="tour-duration-badge">
-                          {getTranslatedValue(tour.duration, tour.durationTranslations)}
-                        </div>
-                      </div>
-                      <div className="tour-card-content">
-                        <h3>{getTranslatedValue(tour.title, tour.titleTranslations)}</h3>
-                        <p>{getTranslatedValue(tour.description, tour.descriptionTranslations)}</p>
-                        <div className="tour-card-footer">
-                          <Link
-                            href={`/itineraries/${tour.category}/${tour.slug}`}
-                            className="tour-enquire-btn"
-                          >
-                            {t('adventureNature.readMore') || 'Read More'}
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Duplicate cards for seamless loop */}
-                  {tours.map((tour) => (
-                    <div key={`duplicate-${tour.id}`} className="tour-card">
-                      <div className="tour-card-image">
-                        <Image
-                          src={getImageUrl(tour)}
-                          alt={tour.image?.alt || tour.title}
-                          width={400}
-                          height={300}
-                          className="tour-img"
-                        />
-                        <div className="tour-duration-badge">
-                          {getTranslatedValue(tour.duration, tour.durationTranslations)}
-                        </div>
-                      </div>
-                      <div className="tour-card-content">
-                        <h3>{getTranslatedValue(tour.title, tour.titleTranslations)}</h3>
-                        <p>{getTranslatedValue(tour.description, tour.descriptionTranslations)}</p>
-                        <div className="tour-card-footer">
-                          <Link
-                            href={`/itineraries/${tour.category}/${tour.slug}`}
-                            className="tour-enquire-btn"
-                          >
-                            {t('adventureNature.readMore') || 'Read More'}
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
+              ))
+            )}
           </div>
         </div>
       </section>

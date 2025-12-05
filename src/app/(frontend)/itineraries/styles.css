@@ -101,42 +101,7 @@
   font-weight: 600;
 }
 
-/* Scrolling tours wrapper */
-.itinerary-tours-wrapper {
-  overflow: hidden;
-  width: 100%;
-  position: relative;
-  margin-top: 2rem;
-}
-
-.itinerary-tours-grid {
-  display: flex;
-  gap: 2rem;
-  padding: 1rem 0;
-  animation: itineraryScrollRightToLeft 40s linear infinite;
-  width: fit-content;
-}
-
-.itinerary-tours-grid:hover {
-  animation-play-state: paused;
-}
-
-.itinerary-tours-grid .tour-card {
-  flex: 0 0 300px;
-  min-width: 300px;
-  max-width: 300px;
-}
-
-@keyframes itineraryScrollRightToLeft {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(calc(-50%));
-  }
-}
-
-/* Fallback grid for when no tours or loading */
+/* Tours Grid - Same as Day Tours */
 .tours-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -369,20 +334,6 @@
     gap: 1rem;
   }
 
-  .itinerary-tours-wrapper {
-    overflow: hidden;
-  }
-
-  .itinerary-tours-grid {
-    animation: itineraryScrollRightToLeft 35s linear infinite;
-  }
-
-  .itinerary-tours-grid .tour-card {
-    flex: 0 0 280px;
-    min-width: 280px;
-    max-width: 280px;
-  }
-
   .tours-grid {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
@@ -447,22 +398,6 @@
     font-size: 2rem;
     margin-bottom: 2rem;
     padding: 0 1.5rem;
-  }
-
-  .itinerary-tours-wrapper {
-    overflow: hidden;
-    padding: 0 1.5rem;
-  }
-
-  .itinerary-tours-grid {
-    animation: itineraryScrollRightToLeft 30s linear infinite;
-    gap: 1.5rem;
-  }
-
-  .itinerary-tours-grid .tour-card {
-    flex: 0 0 280px;
-    min-width: 280px;
-    max-width: 280px;
   }
 
   .tours-grid {
@@ -532,31 +467,6 @@
   .section-title {
     font-size: 1.75rem;
     padding: 0 1rem;
-  }
-
-  .itinerary-tours-wrapper {
-    overflow: hidden;
-    padding: 0 1rem;
-  }
-
-  .itinerary-tours-grid {
-    animation: itineraryScrollRightToLeft 25s linear infinite;
-    gap: 1.25rem;
-  }
-
-  .itinerary-tours-grid .tour-card {
-    flex: 0 0 260px;
-    min-width: 260px;
-    max-width: 260px;
-  }
-
-  @keyframes itineraryScrollRightToLeft {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(calc(-50%));
-    }
   }
 
   .tours-grid,
@@ -646,31 +556,6 @@
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
     padding: 0 1rem;
-  }
-
-  .itinerary-tours-wrapper {
-    overflow: hidden;
-    padding: 0 1rem;
-  }
-
-  .itinerary-tours-grid {
-    animation: itineraryScrollRightToLeft 20s linear infinite;
-    gap: 1rem;
-  }
-
-  .itinerary-tours-grid .tour-card {
-    flex: 0 0 250px;
-    min-width: 250px;
-    max-width: 250px;
-  }
-
-  @keyframes itineraryScrollRightToLeft {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(calc(-50%));
-    }
   }
 
   .tours-grid,
