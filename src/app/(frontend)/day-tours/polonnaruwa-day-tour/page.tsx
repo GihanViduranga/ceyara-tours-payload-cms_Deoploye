@@ -1,22 +1,23 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useLanguage } from '../../contexts/LanguageContext'
-import '../styles.css'
-import polonnaruwaImage from '../../assest/images/CulturalTriangle.jpg'
+import { useEffect, useRef, useState } from 'react'
+import AbhayagiriDagoba from '../../assest/images/AbhayagiriDagoba.jpg'
+import anuradhapuraDayTourImage from '../../assest/images/AnuradhapuraDayTour.jpg'
 import bannerMaskSvg from '../../assest/images/banner_mask.svg'
 import bannerMaskMobileSvg from '../../assest/images/banner_maskmobile.svg'
+import isurumuniyaImage from '../../assest/images/isurumuniyaImage.jpg'
+import JetavanaramaDagoba from '../../assest/images/JetavanaramaDagoba.jpg'
+import kuttamPokunaImage from '../../assest/images/kuttamPokunaImage.jpg'
+import mirisavatiyaImage from '../../assest/images/mirisavatiyaImage.jpg'
+import Ruwanwalisaya from '../../assest/images/Ruwanwalisaya.jpg'
+import SrimahaBodi from '../../assest/images/SrimahaBodi.jpg'
+import { useLanguage } from '../../contexts/LanguageContext'
+import '../styles.css'
 
-// Placeholder images - replace with actual images when available
-import culturalTriangleImage from '../../assest/images/CulturalTriangle.jpg'
-import culturalTourImage from '../../assest/images/CulturalTour.jpg'
-import ramayanaTourImage from '../../assest/images/RamayanaTour.jpg'
-import potgulViharaya from '../../assest/images/potgulViharaya.JPG'
-import galVihara from '../../assest/images/galVihara.jpg'
-import rankotVihara from '../../assest/images/rankotVihara.jpg'
-import parakramaSamudra from '../../assest/images/parakramaSamudra.jpg'
+// Reuse the same image for thuparama since it uses the same file
+const thuparamaImage = anuradhapuraDayTourImage
 
 interface Place {
   id: number
