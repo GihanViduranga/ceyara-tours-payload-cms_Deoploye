@@ -7,7 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import './styles.css'
 import defaultDayTourImage from '../assest/images/DayTour.jpg'
 
-import anuradhapuraDayTourImage from '../../assest/images/AnuradhapuraDayTour.jpg'
+import anuradhapuraDayTour from '../assest/images/AnuradhapuraDayTour.jpg'
 import belihuloya from '../assest/images/Belihuloya.jpg'
 import colombo from '../assest/images/colombo.jpg'
 import galleDayTour from '../assest/images/GalleDayTour.jpg'
