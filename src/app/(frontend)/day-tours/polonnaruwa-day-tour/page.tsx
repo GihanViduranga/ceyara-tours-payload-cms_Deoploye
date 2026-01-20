@@ -61,6 +61,16 @@ const getPlacesData = (t: (key: string) => string): PlacesCarouselData[] => [
       ),
       image: parakramaSamudra,
     },
+    otherPlaces: [
+      {
+        id: 6,
+        title: t('dayTours.polonnaruwaDayTour.placesCarousel.places.potgulVihara.title'),
+        description: t(
+          'dayTours.polonnaruwaDayTour.placesCarousel.places.potgulVihara.description',
+        ),
+        image: parakramaSamudra,
+      },
+    ],
   },
 ]
 
