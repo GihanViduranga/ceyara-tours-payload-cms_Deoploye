@@ -1,0 +1,1336 @@
+'use client'
+
+import Image from 'next/image'
+import { useEffect, useState } from 'react'
+import { useLanguage } from '../contexts/LanguageContext'
+import './styles.css'
+
+interface Driver {
+  id: string
+  fullName: string
+  contactNumber: string
+  whatsappNumber?: string
+  emailAddress?: string
+  district: string
+  profilePhoto?: {
+    id: string
+    url?: string
+    publicUrl?: string
+    filename?: string
+    alt?: string
+  }
+  createdAt?: string
+}
+
+interface Guide {
+  id: string
+  fullName: string
+  contactNumber: string
+  whatsappNumber?: string
+  emailAddress?: string
+  district: string
+  profilePhoto?: {
+    id: string
+    url?: string
+    publicUrl?: string
+    filename?: string
+    alt?: string
+  }
+  createdAt?: string
+}
+
+interface TourRequest {
+  id: string
+  type: 'driver' | 'guide'
+  driverOrGuideId: string
+  status: 'pending' | 'done' | 'cancel'
+  startDate?: string
+  endDate?: string
+}
+
+type PersonType = 'driver' | 'guide' | 'all'
+
+export default function RegistrationPage() {
+  const { t } = useLanguage()
+  const [drivers, setDrivers] = useState<Driver[]>([])
+  const [guides, setGuides] = useState<Guide[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedType, setSelectedType] = useState<PersonType>('all')
+  const [filterStartDate, setFilterStartDate] = useState('')
+  const [filterEndDate, setFilterEndDate] = useState('')
+  const [showRegistrationModal, setShowRegistrationModal] = useState(false)
+  const [registrationType, setRegistrationType] = useState<'driver' | 'guide'>('driver')
+  const [registrationFormData, setRegistrationFormData] = useState({
+    fullName: '',
+    nicPassportNumber: '',
+    dateOfBirth: '',
+    contactNumber: '',
+    whatsappNumber: '',
+    emailAddress: '',
+    residentialAddress: '',
+    district: '',
+    emergencyContactName: '',
+    emergencyContactNumber: '',
+    profilePhoto: null as File | null,
+    nicPhotoFront: null as File | null,
+    nicPhotoBack: null as File | null,
+  })
+  const [imagePreviews, setImagePreviews] = useState<{
+    profilePhoto: string | null
+    nicPhotoFront: string | null
+    nicPhotoBack: string | null
+  }>({
+    profilePhoto: null,
+    nicPhotoFront: null,
+    nicPhotoBack: null,
+  })
+  const [registering, setRegistering] = useState(false)
+  const [registerMessage, setRegisterMessage] = useState<{
+    type: 'success' | 'error'
+    text: string
+  } | null>(null)
+  const [tourRequests, setTourRequests] = useState<TourRequest[]>([])
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [selectedPerson, setSelectedPerson] = useState<{
+    id: string
+    name: string
+    email?: string
+    contact: string
+    type: 'driver' | 'guide'
+  } | null>(null)
+  const [requestFormData, setRequestFormData] = useState({
+    touristName: '',
+    touristEmail: '',
+    touristContact: '',
+    startDate: '',
+    endDate: '',
+  })
+  const [submittingRequest, setSubmittingRequest] = useState(false)
+  const [requestMessage, setRequestMessage] = useState<{
+    type: 'success' | 'error'
+    text: string
+  } | null>(null)
+
+  // Fetch drivers, guides, and tour requests
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+
+        // Fetch drivers
+        const driversResponse = await fetch('/api/drivers?limit=100&depth=2&sort=-createdAt')
+        if (driversResponse.ok) {
+          const driversData = await driversResponse.json()
+          setDrivers(driversData.docs || [])
+        }
+
+        // Fetch guides
+        const guidesResponse = await fetch('/api/guides?limit=100&depth=2&sort=-createdAt')
+        if (guidesResponse.ok) {
+          const guidesData = await guidesResponse.json()
+          setGuides(guidesData.docs || [])
+        }
+
+        // Fetch tour requests (pending and done status for filtering)
+        try {
+          // Fetch pending requests
+          const pendingResponse = await fetch(
+            '/api/tour-requests?where[status][equals]=pending&limit=1000',
+          )
+          const pendingData = pendingResponse.ok ? await pendingResponse.json() : { docs: [] }
+
+          // Fetch done requests
+          const doneResponse = await fetch(
+            '/api/tour-requests?where[status][equals]=done&limit=1000',
+          )
+          const doneData = doneResponse.ok ? await doneResponse.json() : { docs: [] }
+
+          // Combine both arrays
+          const allRequests = [...(pendingData.docs || []), ...(doneData.docs || [])]
+          setTourRequests(allRequests)
+        } catch (err) {
+          console.error('Error fetching tour requests:', err)
+        }
+      } catch (err) {
+        console.error('Error fetching drivers and guides:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  // Get image URL helper
+  const getImageUrl = (person: Driver | Guide) => {
+    // Use publicUrl if available (GCS URL)
+    if (
+      person.profilePhoto &&
+      typeof person.profilePhoto === 'object' &&
+      'publicUrl' in person.profilePhoto &&
+      person.profilePhoto.publicUrl
+    ) {
+      return person.profilePhoto.publicUrl as string
+    }
+    // Use url if available
+    if (person.profilePhoto?.url) {
+      return person.profilePhoto.url
+    }
+    // Try to construct URL from filename (for GCS)
+    if (person.profilePhoto?.filename) {
+      // If it's already a full URL, return it
+      if (person.profilePhoto.filename.startsWith('http')) {
+        return person.profilePhoto.filename
+      }
+      // Otherwise try the API endpoint
+      return `/api/media/file/${person.profilePhoto.filename}`
+    }
+    // Use a placeholder service as fallback
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(person.fullName)}&background=random&size=200`
+  }
+
+  // Check if date ranges overlap
+  const dateRangesOverlap = (
+    range1Start: Date,
+    range1End: Date,
+    range2Start: Date,
+    range2End: Date,
+  ): boolean => {
+    // Check if ranges overlap: range1Start <= range2End && range2Start <= range1End
+    return range1Start <= range2End && range2Start <= range1End
+  }
+
+  // Check if person should be hidden (has "pending" or "done" status request with overlapping dates)
+  const isPersonHidden = (personId: string): boolean => {
+    // If date range filter is provided, check against that range
+    if (filterStartDate && filterEndDate) {
+      const filterStart = new Date(filterStartDate)
+      filterStart.setHours(0, 0, 0, 0)
+      const filterEnd = new Date(filterEndDate)
+      filterEnd.setHours(0, 0, 0, 0)
+
+      // Check if there's a "pending" or "done" status request for this person that overlaps with the selected date range
+      const hasOverlappingRequest = tourRequests.some((request) => {
+        // Only check pending or done status
+        if (
+          request.driverOrGuideId !== personId ||
+          (request.status !== 'pending' && request.status !== 'done')
+        ) {
+          return false
+        }
+
+        if (!request.startDate || !request.endDate) {
+          return false
+        }
+
+        const requestStart = new Date(request.startDate)
+        requestStart.setHours(0, 0, 0, 0)
+        const requestEnd = new Date(request.endDate)
+        requestEnd.setHours(0, 0, 0, 0)
+
+        // Check if the selected date range overlaps with the request date range
+        return dateRangesOverlap(filterStart, filterEnd, requestStart, requestEnd)
+      })
+
+      return hasOverlappingRequest
+    }
+
+    // If no date filter, check against current date (only "done" status for current date filtering)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    // Check if there's a "done" status request for this person with active dates
+    const hasActiveDoneRequest = tourRequests.some((request) => {
+      if (request.driverOrGuideId !== personId || request.status !== 'done') {
+        return false
+      }
+
+      if (!request.startDate || !request.endDate) {
+        return false
+      }
+
+      const start = new Date(request.startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(request.endDate)
+      end.setHours(0, 0, 0, 0)
+
+      // Check if current date is between request start and end dates
+      return today >= start && today <= end
+    })
+
+    return hasActiveDoneRequest
+  }
+
+  // Filter data based on search, type, and active requests
+  const filteredDrivers = drivers.filter((driver) => {
+    // Hide if has active "done" status request
+    if (isPersonHidden(driver.id)) {
+      return false
+    }
+
+    const matchesSearch =
+      driver.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      driver.district.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      driver.contactNumber.includes(searchQuery)
+    const matchesType = selectedType === 'all' || selectedType === 'driver'
+    return matchesSearch && matchesType
+  })
+
+  const filteredGuides = guides.filter((guide) => {
+    // Hide if has active "done" status request
+    if (isPersonHidden(guide.id)) {
+      return false
+    }
+
+    const matchesSearch =
+      guide.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      guide.district.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      guide.contactNumber.includes(searchQuery)
+    const matchesType = selectedType === 'all' || selectedType === 'guide'
+    return matchesSearch && matchesType
+  })
+
+  // Handle request modal open
+  const openRequestModal = (person: Driver | Guide, type: 'driver' | 'guide') => {
+    setSelectedPerson({
+      id: person.id,
+      name: person.fullName,
+      email: person.emailAddress,
+      contact: person.contactNumber,
+      type,
+    })
+    setRequestFormData({
+      touristName: '',
+      touristEmail: '',
+      touristContact: '',
+      startDate: '',
+      endDate: '',
+    })
+    setRequestMessage(null)
+    setShowRequestModal(true)
+  }
+
+  // Handle request form submission
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedPerson) return
+
+    setSubmittingRequest(true)
+    setRequestMessage(null)
+
+    try {
+      const response = await fetch('/api/tour-requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: selectedPerson.type,
+          driverOrGuideId: selectedPerson.id,
+          driverOrGuideName: selectedPerson.name,
+          driverOrGuideEmail: selectedPerson.email || '',
+          driverOrGuideContact: selectedPerson.contact,
+          touristName: requestFormData.touristName,
+          touristEmail: requestFormData.touristEmail,
+          touristContact: requestFormData.touristContact,
+          startDate: requestFormData.startDate,
+          endDate: requestFormData.endDate,
+          status: 'pending',
+        }),
+      })
+
+      if (response.ok) {
+        setRequestMessage({
+          type: 'success',
+          text: 'Tour request submitted successfully! We will contact you soon.',
+        })
+
+        // Refresh data after a short delay
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        setRequestMessage({
+          type: 'error',
+          text: errorData.message || 'Failed to submit request. Please try again.',
+        })
+      }
+    } catch (_error) {
+      setRequestMessage({
+        type: 'error',
+        text: 'Failed to submit request. Please try again.',
+      })
+    } finally {
+      setSubmittingRequest(false)
+    }
+  }
+
+  // Handle registration modal open
+  const openRegistrationModal = (type: 'driver' | 'guide') => {
+    setRegistrationType(type)
+    setShowRegistrationModal(true)
+    setRegisterMessage(null)
+    // Reset form
+    setRegistrationFormData({
+      fullName: '',
+      nicPassportNumber: '',
+      dateOfBirth: '',
+      contactNumber: '',
+      whatsappNumber: '',
+      emailAddress: '',
+      residentialAddress: '',
+      district: '',
+      emergencyContactName: '',
+      emergencyContactNumber: '',
+      profilePhoto: null,
+      nicPhotoFront: null,
+      nicPhotoBack: null,
+    })
+    setImagePreviews({
+      profilePhoto: null,
+      nicPhotoFront: null,
+      nicPhotoBack: null,
+    })
+  }
+
+  // Handle file input changes with preview
+  const handleFileChange = (
+    field: 'profilePhoto' | 'nicPhotoFront' | 'nicPhotoBack',
+    file: File | null,
+  ) => {
+    setRegistrationFormData({ ...registrationFormData, [field]: file })
+
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreviews({ ...imagePreviews, [field]: reader.result as string })
+      }
+      reader.readAsDataURL(file)
+    } else {
+      setImagePreviews({ ...imagePreviews, [field]: null })
+    }
+  }
+
+  // Upload file to media collection
+  const uploadFileToMedia = async (file: File, altText: string): Promise<string | null> => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('alt', altText)
+
+      const response = await fetch('/api/media', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return data.doc?.id || data.id || null
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('File upload failed:', errorData)
+        return null
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      return null
+    }
+  }
+
+  // Handle registration form submission
+  const handleRegistrationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setRegistering(true)
+    setRegisterMessage(null)
+
+    try {
+      // Upload files first (continue even if some uploads fail)
+      let profilePhotoId: string | null = null
+      let nicPhotoFrontId: string | null = null
+      let nicPhotoBackId: string | null = null
+      const uploadErrors: string[] = []
+
+      if (registrationFormData.profilePhoto) {
+        profilePhotoId = await uploadFileToMedia(
+          registrationFormData.profilePhoto,
+          `Profile photo - ${registrationFormData.fullName}`,
+        )
+        if (!profilePhotoId) {
+          uploadErrors.push(
+            t('registration.profilePhotoUploadFailed') || 'Profile photo upload failed',
+          )
+        }
+      }
+
+      if (registrationType === 'guide') {
+        if (registrationFormData.nicPhotoFront) {
+          nicPhotoFrontId = await uploadFileToMedia(
+            registrationFormData.nicPhotoFront,
+            `NIC Front - ${registrationFormData.fullName}`,
+          )
+          if (!nicPhotoFrontId) {
+            uploadErrors.push(
+              t('registration.nicFrontUploadFailed') || 'NIC front photo upload failed',
+            )
+          }
+        }
+        if (registrationFormData.nicPhotoBack) {
+          nicPhotoBackId = await uploadFileToMedia(
+            registrationFormData.nicPhotoBack,
+            `NIC Back - ${registrationFormData.fullName}`,
+          )
+          if (!nicPhotoBackId) {
+            uploadErrors.push(
+              t('registration.nicBackUploadFailed') || 'NIC back photo upload failed',
+            )
+          }
+        }
+      }
+
+      // Prepare the data object
+      const dataToSubmit: Record<string, unknown> = {
+        fullName: registrationFormData.fullName,
+        nicPassportNumber: registrationFormData.nicPassportNumber,
+        dateOfBirth: registrationFormData.dateOfBirth,
+        contactNumber: registrationFormData.contactNumber,
+        residentialAddress: registrationFormData.residentialAddress,
+        district: registrationFormData.district,
+        emergencyContactName: registrationFormData.emergencyContactName,
+        emergencyContactNumber: registrationFormData.emergencyContactNumber,
+      }
+
+      // Add optional fields
+      if (registrationFormData.whatsappNumber) {
+        dataToSubmit.whatsappNumber = registrationFormData.whatsappNumber
+      }
+      if (registrationFormData.emailAddress) {
+        dataToSubmit.emailAddress = registrationFormData.emailAddress
+      }
+
+      // Add file IDs if uploaded
+      if (profilePhotoId) {
+        dataToSubmit.profilePhoto = profilePhotoId
+      }
+      if (nicPhotoFrontId) {
+        dataToSubmit.nicPhotoFront = nicPhotoFrontId
+      }
+      if (nicPhotoBackId) {
+        dataToSubmit.nicPhotoBack = nicPhotoBackId
+      }
+
+      const endpoint = registrationType === 'driver' ? '/api/drivers' : '/api/guides'
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSubmit),
+      })
+
+      if (response.ok) {
+        let successMessage =
+          t('registration.registrationSuccess') ||
+          'Registration submitted successfully! We will review your application.'
+
+        if (uploadErrors.length > 0) {
+          successMessage += ` ${t('registration.someUploadsFailed') || 'Note: Some file uploads failed, but registration was successful.'}`
+        }
+
+        setRegisterMessage({
+          type: 'success',
+          text: successMessage,
+        })
+
+        // Refresh the list
+        const fetchData = async () => {
+          if (registrationType === 'driver') {
+            const driversResponse = await fetch('/api/drivers?limit=100&depth=2&sort=-createdAt')
+            if (driversResponse.ok) {
+              const driversData = await driversResponse.json()
+              setDrivers(driversData.docs || [])
+            }
+          } else {
+            const guidesResponse = await fetch('/api/guides?limit=100&depth=2&sort=-createdAt')
+            if (guidesResponse.ok) {
+              const guidesData = await guidesResponse.json()
+              setGuides(guidesData.docs || [])
+            }
+          }
+        }
+        fetchData()
+
+        // Close modal after 3 seconds
+        setTimeout(() => {
+          setShowRegistrationModal(false)
+          setRegisterMessage(null)
+        }, 3000)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        setRegisterMessage({
+          type: 'error',
+          text:
+            errorData.message ||
+            t('registration.registrationError') ||
+            'Failed to submit registration. Please try again.',
+        })
+      }
+    } catch (_error) {
+      setRegisterMessage({
+        type: 'error',
+        text:
+          t('registration.registrationError') || 'Failed to submit registration. Please try again.',
+      })
+    } finally {
+      setRegistering(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="registration-page">
+        <div className="container" style={{ padding: '4rem', textAlign: 'center' }}>
+          <p>{t('common.loading') || 'Loading...'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="registration-page">
+      {/* Hero Section */}
+      <section className="registration-hero">
+        <div className="container">
+          <h1>{t('registration.title') || 'Find Drivers & Tour Guides'}</h1>
+          <p className="registration-hero-subtitle">
+            {t('registration.subtitle') ||
+              'Search and connect with professional drivers and tour guides'}
+          </p>
+          <div className="registration-buttons">
+            <button
+              onClick={() => openRegistrationModal('driver')}
+              className="register-btn register-driver-btn"
+            >
+              {t('registration.registerAsDriver') || 'Register as Driver'}
+            </button>
+            <button
+              onClick={() => openRegistrationModal('guide')}
+              className="register-btn register-guide-btn"
+            >
+              {t('registration.registerAsGuide') || 'Register as Guide'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Search and Filter Section */}
+      <section className="registration-search">
+        <div className="container">
+          <div className="search-filters">
+            <div className="search-box">
+              <input
+                type="text"
+                placeholder={
+                  t('registration.searchPlaceholder') || 'Search by name, district, or contact...'
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+            </div>
+            <div className="type-filter">
+              <label>{t('registration.selectType') || 'Select Type:'}</label>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value as PersonType)}
+                className="type-select"
+              >
+                <option value="all">{t('registration.all') || 'All'}</option>
+                <option value="driver">{t('registration.tourDriver') || 'Tour Driver'}</option>
+                <option value="guide">{t('registration.tourGuide') || 'Tour Guide'}</option>
+              </select>
+            </div>
+          </div>
+          <div className="date-filters">
+            <div className="date-filter-group">
+              <label htmlFor="filterStartDate">
+                {t('registration.filterStartDate') || 'Tour Start Date:'}
+              </label>
+              <input
+                type="date"
+                id="filterStartDate"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                className="date-input"
+              />
+            </div>
+            <div className="date-filter-group">
+              <label htmlFor="filterEndDate">
+                {t('registration.filterEndDate') || 'Tour End Date:'}
+              </label>
+              <input
+                type="date"
+                id="filterEndDate"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                className="date-input"
+                min={filterStartDate || undefined}
+              />
+            </div>
+            {(filterStartDate || filterEndDate) && (
+              <button
+                onClick={() => {
+                  setFilterStartDate('')
+                  setFilterEndDate('')
+                }}
+                className="clear-date-btn"
+              >
+                {t('registration.clearDates') || 'Clear Dates'}
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Results Section */}
+      <section className="registration-results">
+        <div className="container">
+          {/* Drivers Section */}
+          {filteredDrivers.length > 0 && (selectedType === 'all' || selectedType === 'driver') && (
+            <div className="results-section">
+              <h2>{t('registration.drivers') || 'Tour Drivers'}</h2>
+              <div className="people-grid">
+                {filteredDrivers.map((driver) => (
+                  <div key={driver.id} className="person-card">
+                    <div className="person-photo">
+                      <Image
+                        src={getImageUrl(driver)}
+                        alt={driver.fullName}
+                        width={200}
+                        height={200}
+                        className="person-img"
+                      />
+                    </div>
+                    <div className="person-info">
+                      <h3>{driver.fullName}</h3>
+                      <p className="person-district">{driver.district}</p>
+                      <div className="person-contact">
+                        <p>
+                          <strong>{t('registration.contact') || 'Contact'}:</strong>{' '}
+                          {driver.contactNumber}
+                        </p>
+                        {driver.whatsappNumber &&
+                          driver.whatsappNumber !== driver.contactNumber && (
+                            <p>
+                              <strong>{t('registration.whatsapp') || 'WhatsApp'}:</strong>{' '}
+                              {driver.whatsappNumber}
+                            </p>
+                          )}
+                        {driver.emailAddress && (
+                          <p>
+                            <strong>{t('registration.email') || 'Email'}:</strong>{' '}
+                            {driver.emailAddress}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => openRequestModal(driver, 'driver')}
+                        className="request-btn"
+                      >
+                        {t('registration.request') || 'Request'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Guides Section */}
+          {filteredGuides.length > 0 && (selectedType === 'all' || selectedType === 'guide') && (
+            <div className="results-section">
+              <h2>{t('registration.guides') || 'Tour Guides'}</h2>
+              <div className="people-grid">
+                {filteredGuides.map((guide) => (
+                  <div key={guide.id} className="person-card">
+                    <div className="person-photo">
+                      <Image
+                        src={getImageUrl(guide)}
+                        alt={guide.fullName}
+                        width={200}
+                        height={200}
+                        className="person-img"
+                      />
+                    </div>
+                    <div className="person-info">
+                      <h3>{guide.fullName}</h3>
+                      <p className="person-district">{guide.district}</p>
+                      <div className="person-contact">
+                        <p>
+                          <strong>{t('registration.contact') || 'Contact'}:</strong>{' '}
+                          {guide.contactNumber}
+                        </p>
+                        {guide.whatsappNumber && guide.whatsappNumber !== guide.contactNumber && (
+                          <p>
+                            <strong>{t('registration.whatsapp') || 'WhatsApp'}:</strong>{' '}
+                            {guide.whatsappNumber}
+                          </p>
+                        )}
+                        {guide.emailAddress && (
+                          <p>
+                            <strong>{t('registration.email') || 'Email'}:</strong>{' '}
+                            {guide.emailAddress}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => openRequestModal(guide, 'guide')}
+                        className="request-btn"
+                      >
+                        {t('registration.request') || 'Request'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Results */}
+          {filteredDrivers.length === 0 && filteredGuides.length === 0 && (
+            <div className="no-results">
+              <p>
+                {t('registration.noResults') || 'No drivers or guides found matching your search.'}
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Registration Modal */}
+      {showRegistrationModal && (
+        <div className="modal-overlay" onClick={() => setShowRegistrationModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {registrationType === 'driver'
+                  ? t('registration.registerAsDriver') || 'Register as Driver'
+                  : t('registration.registerAsGuide') || 'Register as Guide'}
+              </h2>
+              <button
+                className="modal-close-btn"
+                onClick={() => setShowRegistrationModal(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleRegistrationSubmit} className="registration-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="fullName">
+                    {t('registration.fullName') || 'Full Name (As per NIC)'}{' '}
+                    <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="fullName"
+                    value={registrationFormData.fullName}
+                    onChange={(e) =>
+                      setRegistrationFormData({ ...registrationFormData, fullName: e.target.value })
+                    }
+                    required
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nicPassportNumber">
+                    {t('registration.nicPassportNumber') || 'NIC/Passport Number'}{' '}
+                    <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="nicPassportNumber"
+                    value={registrationFormData.nicPassportNumber}
+                    onChange={(e) =>
+                      setRegistrationFormData({
+                        ...registrationFormData,
+                        nicPassportNumber: e.target.value,
+                      })
+                    }
+                    required
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="dateOfBirth">
+                    {t('registration.dateOfBirth') || 'Date of Birth'}{' '}
+                    <span className="required">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    id="dateOfBirth"
+                    value={registrationFormData.dateOfBirth}
+                    onChange={(e) =>
+                      setRegistrationFormData({
+                        ...registrationFormData,
+                        dateOfBirth: e.target.value,
+                      })
+                    }
+                    required
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="contactNumber">
+                    {t('registration.contactNumber') || 'Contact Number'}{' '}
+                    <span className="required">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    id="contactNumber"
+                    value={registrationFormData.contactNumber}
+                    onChange={(e) =>
+                      setRegistrationFormData({
+                        ...registrationFormData,
+                        contactNumber: e.target.value,
+                      })
+                    }
+                    required
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="whatsappNumber">
+                    {t('registration.whatsappNumber') || 'WhatsApp Number'}
+                  </label>
+                  <input
+                    type="tel"
+                    id="whatsappNumber"
+                    value={registrationFormData.whatsappNumber}
+                    onChange={(e) =>
+                      setRegistrationFormData({
+                        ...registrationFormData,
+                        whatsappNumber: e.target.value,
+                      })
+                    }
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="emailAddress">
+                    {t('registration.emailAddress') || 'Email Address (Optional)'}
+                  </label>
+                  <input
+                    type="email"
+                    id="emailAddress"
+                    value={registrationFormData.emailAddress}
+                    onChange={(e) =>
+                      setRegistrationFormData({
+                        ...registrationFormData,
+                        emailAddress: e.target.value,
+                      })
+                    }
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="residentialAddress">
+                  {t('registration.residentialAddress') || 'Residential Address'}{' '}
+                  <span className="required">*</span>
+                </label>
+                <textarea
+                  id="residentialAddress"
+                  value={registrationFormData.residentialAddress}
+                  onChange={(e) =>
+                    setRegistrationFormData({
+                      ...registrationFormData,
+                      residentialAddress: e.target.value,
+                    })
+                  }
+                  required
+                  rows={3}
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="district">
+                  {t('registration.district') || 'District/Province'}{' '}
+                  <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="district"
+                  value={registrationFormData.district}
+                  onChange={(e) =>
+                    setRegistrationFormData({ ...registrationFormData, district: e.target.value })
+                  }
+                  required
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="emergencyContactName">
+                    {t('registration.emergencyContactName') || 'Emergency Contact Name'}{' '}
+                    <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="emergencyContactName"
+                    value={registrationFormData.emergencyContactName}
+                    onChange={(e) =>
+                      setRegistrationFormData({
+                        ...registrationFormData,
+                        emergencyContactName: e.target.value,
+                      })
+                    }
+                    required
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="emergencyContactNumber">
+                    {t('registration.emergencyContactNumber') || 'Emergency Contact Number'}{' '}
+                    <span className="required">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    id="emergencyContactNumber"
+                    value={registrationFormData.emergencyContactNumber}
+                    onChange={(e) =>
+                      setRegistrationFormData({
+                        ...registrationFormData,
+                        emergencyContactNumber: e.target.value,
+                      })
+                    }
+                    required
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              {/* Profile Photo Upload */}
+              <div className="form-group">
+                <label htmlFor="profilePhoto">
+                  {t('registration.profilePhoto') || 'Profile Photo'}
+                </label>
+                <div className="file-upload-wrapper">
+                  <input
+                    type="file"
+                    id="profilePhoto"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange('profilePhoto', e.target.files?.[0] || null)}
+                    className="file-input"
+                  />
+                  <label htmlFor="profilePhoto" className="file-upload-label">
+                    {t('registration.chooseFile') || 'Choose File'}
+                  </label>
+                  {registrationFormData.profilePhoto && (
+                    <span className="file-name">{registrationFormData.profilePhoto.name}</span>
+                  )}
+                </div>
+                {imagePreviews.profilePhoto && (
+                  <div className="image-preview">
+                    <Image
+                      src={imagePreviews.profilePhoto}
+                      alt="Profile preview"
+                      width={200}
+                      height={200}
+                      className="preview-image"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* NIC Photos (Guides only) */}
+              {registrationType === 'guide' && (
+                <>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="nicPhotoFront">
+                        {t('registration.nicPhotoFront') || 'NIC Photo (Front)'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="nicPhotoFront"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('nicPhotoFront', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="nicPhotoFront" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.nicPhotoFront && (
+                          <span className="file-name">
+                            {registrationFormData.nicPhotoFront.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.nicPhotoFront && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.nicPhotoFront}
+                            alt="NIC Front preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="nicPhotoBack">
+                        {t('registration.nicPhotoBack') || 'NIC Photo (Back)'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="nicPhotoBack"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('nicPhotoBack', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="nicPhotoBack" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.nicPhotoBack && (
+                          <span className="file-name">
+                            {registrationFormData.nicPhotoBack.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.nicPhotoBack && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.nicPhotoBack}
+                            alt="NIC Back preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {registerMessage && (
+                <div
+                  className={`submit-message ${registerMessage.type === 'success' ? 'success' : 'error'}`}
+                >
+                  {registerMessage.text}
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  onClick={() => setShowRegistrationModal(false)}
+                  className="cancel-btn"
+                >
+                  {t('registration.cancel') || 'Cancel'}
+                </button>
+                <button type="submit" disabled={registering} className="submit-btn">
+                  {registering
+                    ? t('registration.registering') || 'Registering...'
+                    : t('registration.register') || 'Register'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Request Modal */}
+      {showRequestModal && selectedPerson && (
+        <div className="modal-overlay" onClick={() => setShowRequestModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{t('registration.requestTour') || 'Request Tour'}</h2>
+              <button
+                className="modal-close-btn"
+                onClick={() => setShowRequestModal(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleRequestSubmit} className="registration-form">
+              {/* Driver/Guide Information (Read-only) */}
+              <div className="form-section">
+                <h3 className="section-title">
+                  {selectedPerson.type === 'driver' ? 'Driver' : 'Guide'} Information
+                </h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Name</label>
+                    <input
+                      type="text"
+                      value={selectedPerson.name}
+                      readOnly
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Contact</label>
+                    <input
+                      type="text"
+                      value={selectedPerson.contact}
+                      readOnly
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+                {selectedPerson.email && (
+                  <div className="form-group">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      value={selectedPerson.email}
+                      readOnly
+                      className="form-input"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Tourist Information */}
+              <div className="form-section">
+                <h3 className="section-title">Tourist Information</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="touristName">
+                      {t('registration.touristName') || 'Tourist Name'}{' '}
+                      <span className="required">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="touristName"
+                      value={requestFormData.touristName}
+                      onChange={(e) =>
+                        setRequestFormData({ ...requestFormData, touristName: e.target.value })
+                      }
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="touristEmail">
+                      {t('registration.touristEmail') || 'Tourist Email'}{' '}
+                      <span className="required">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      id="touristEmail"
+                      value={requestFormData.touristEmail}
+                      onChange={(e) =>
+                        setRequestFormData({ ...requestFormData, touristEmail: e.target.value })
+                      }
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="touristContact">
+                    {t('registration.touristContact') || 'Tourist Contact'}{' '}
+                    <span className="required">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    id="touristContact"
+                    value={requestFormData.touristContact}
+                    onChange={(e) =>
+                      setRequestFormData({ ...requestFormData, touristContact: e.target.value })
+                    }
+                    required
+                    className="form-input"
+                  />
+                </div>
+              </div>
+
+              {/* Tour Dates */}
+              <div className="form-section">
+                <h3 className="section-title">Tour Dates</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="startDate">
+                      {t('registration.startDate') || 'Start Date'}{' '}
+                      <span className="required">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      id="startDate"
+                      value={requestFormData.startDate}
+                      onChange={(e) =>
+                        setRequestFormData({ ...requestFormData, startDate: e.target.value })
+                      }
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="endDate">
+                      {t('registration.endDate') || 'End Date'} <span className="required">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      id="endDate"
+                      value={requestFormData.endDate}
+                      onChange={(e) =>
+                        setRequestFormData({ ...requestFormData, endDate: e.target.value })
+                      }
+                      required
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {requestMessage && (
+                <div
+                  className={`submit-message ${requestMessage.type === 'success' ? 'success' : 'error'}`}
+                >
+                  {requestMessage.text}
+                </div>
+              )}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  onClick={() => setShowRequestModal(false)}
+                  className="cancel-btn"
+                >
+                  {t('registration.cancel') || 'Cancel'}
+                </button>
+                <button type="submit" disabled={submittingRequest} className="submit-btn">
+                  {submittingRequest
+                    ? t('registration.submitting') || 'Submitting...'
+                    : t('registration.submitRequest') || 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
