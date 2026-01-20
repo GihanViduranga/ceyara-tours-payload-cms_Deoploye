@@ -1,23 +1,25 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useLanguage } from '../../contexts/LanguageContext'
-import '../styles.css'
+import { useEffect, useRef, useState } from 'react'
 import anuradhapuraDayTourImage from '../../assest/images/AnuradhapuraDayTour.jpg'
 import bannerMaskSvg from '../../assest/images/banner_mask.svg'
 import bannerMaskMobileSvg from '../../assest/images/banner_maskmobile.svg'
+import { useLanguage } from '../../contexts/LanguageContext'
+import '../styles.css'
 
 // Placeholder images - replace with actual images when available
+import AbhayagiriDagoba from '../../assest/images/AbhayagiriDagoba.jpg'
 import isurumuniyaImage from '../../assest/images/isurumuniyaImage.jpg'
-import anuradhapuraDayTourImage from '../../assest/images/AnuradhapuraDayTour.jpg'
+import JetavanaramaDagoba from '../../assest/images/JetavanaramaDagoba.jpg'
 import kuttamPokunaImage from '../../assest/images/kuttamPokunaImage.jpg'
 import mirisavatiyaImage from '../../assest/images/mirisavatiyaImage.jpg'
 import Ruwanwalisaya from '../../assest/images/Ruwanwalisaya.jpg'
-import JetavanaramaDagoba from '../../assest/images/JetavanaramaDagoba.jpg'
-import AbhayagiriDagoba from '../../assest/images/AbhayagiriDagoba.jpg'
 import SrimahaBodi from '../../assest/images/SrimahaBodi.jpg'
+
+// Reuse the same image for thuparama since it uses the same file
+const thuparamaImage = anuradhapuraDayTourImage
 
 interface Place {
   id: number
