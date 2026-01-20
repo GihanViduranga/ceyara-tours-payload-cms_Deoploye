@@ -13,7 +13,6 @@ import '../styles.css'
 import culturalTourImage from '../../assest/images/CulturalTour.jpg'
 import galVihara from '../../assest/images/galVihara.jpg'
 import parakramaSamudra from '../../assest/images/parakramaSamudra.jpg'
-import potgulViharaya from '../../assest/images/potgulViharaya.jpg'
 import rankotVihara from '../../assest/images/rankotVihara.jpg'
 
 interface Place {
