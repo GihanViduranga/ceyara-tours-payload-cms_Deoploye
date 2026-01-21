@@ -13,10 +13,10 @@ import { Gallery } from './collections/Gallery'
 import { Guides } from './collections/Guides'
 import { Hotels } from './collections/Hotels'
 import { ItineraryPages } from './collections/ItineraryPages'
-import { TourRequest } from './collections/TourRequest'
 import { Maldives } from './collections/Maldives'
 import { Media as MediaCollection } from './collections/Media'
 import { Testimonials } from './collections/Testimonials'
+import { TourRequest } from './collections/TourRequest'
 import { TripConfiguration } from './collections/TripConfiguration'
 import { Users } from './collections/Users'
 import { VehicleConfiguration } from './collections/VehicleConfiguration'
@@ -84,7 +84,9 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
+  serverURL: process.env.NEXT_PUBLIC_SERVER_URL 
+    ? process.env.NEXT_PUBLIC_SERVER_URL.replace(/\/$/, '') // Remove trailing slash
+    : 'http://localhost:3000',
   secret: process.env.PAYLOAD_SECRET || 'your-secret-key-here',
   sharp,
   db: mongooseAdapter({

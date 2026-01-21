@@ -163,18 +163,56 @@ export const Media: CollectionConfig = {
     ],
     afterRead: [
       ({ doc }) => {
-        // Ensure url is always set from publicUrl (Cloudinary) if available
-        // This ensures images display correctly in production
-        if (doc.publicUrl) {
+        // Priority 1: Always use publicUrl (Cloudinary) if it's a Cloudinary URL
+        if (doc.publicUrl && typeof doc.publicUrl === 'string' && doc.publicUrl.includes('cloudinary.com')) {
           doc.url = doc.publicUrl
-        } else if (doc.cloudinaryPublicId) {
-          // Generate Cloudinary URL from public_id if publicUrl is missing
+          return doc
+        }
+        
+        // Priority 2: Generate Cloudinary URL from public_id if available
+        if (doc.cloudinaryPublicId) {
           const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
             secure: true,
           })
           doc.url = cloudinaryUrl
-          doc.publicUrl = cloudinaryUrl
+          // Also set publicUrl if it's missing or not a Cloudinary URL
+          if (!doc.publicUrl || !doc.publicUrl.includes('cloudinary.com')) {
+            doc.publicUrl = cloudinaryUrl
+          }
+          return doc
         }
+        
+        // Priority 3: Replace localhost URLs (even if Cloudinary data is missing)
+        // This handles cases where Cloudinary upload hasn't completed yet or failed
+        if (doc.url && typeof doc.url === 'string') {
+          const isLocalhost = 
+            doc.url.includes('localhost') || 
+            doc.url.includes('127.0.0.1') ||
+            doc.url.startsWith('http://localhost') ||
+            doc.url.startsWith('https://localhost')
+          
+          if (isLocalhost) {
+            // If we have cloudinaryPublicId, generate Cloudinary URL
+            if (doc.cloudinaryPublicId) {
+              const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
+                secure: true,
+              })
+              doc.url = cloudinaryUrl
+              doc.publicUrl = cloudinaryUrl
+              return doc
+            }
+            
+            // Log warning in production - Cloudinary upload may have failed
+            if (process.env.NODE_ENV === 'production') {
+              console.warn(
+                `⚠️  Media ${doc.id} has localhost URL but no Cloudinary data. ` +
+                `URL: ${doc.url}. Filename: ${doc.filename}. ` +
+                `This image may need to be re-uploaded or Cloudinary upload may have failed.`
+              )
+            }
+          }
+        }
+        
         return doc
       },
     ],
@@ -229,12 +267,12 @@ export const Media: CollectionConfig = {
                       console.log('✓ Using file from filesystem:', filePath)
                       break
                     }
-                  } catch (fsError) {
+                  } catch (_fsError) {
                     // Continue to next path
                     continue
                   }
                 }
-              } catch (fsError) {
+              } catch (_fsError) {
                 // Filesystem access failed (expected in serverless) - continue to URL fallback
                 console.warn('Filesystem access not available (normal in serverless)')
               }
@@ -299,15 +337,36 @@ export const Media: CollectionConfig = {
           }
         }
 
-        // Ensure publicUrl is set from Cloudinary if available
-        if (doc.cloudinaryPublicId && !doc.publicUrl) {
+        // Ensure publicUrl and url are always set to Cloudinary URLs if available
+        if (doc.cloudinaryPublicId) {
           const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
             secure: true,
           })
+          
+          // Always use Cloudinary URL if we have publicId
           return {
             ...doc,
             publicUrl: cloudinaryUrl,
             url: cloudinaryUrl,
+          }
+        }
+        
+        // If publicUrl exists and is a Cloudinary URL, ensure url matches
+        if (doc.publicUrl && typeof doc.publicUrl === 'string' && doc.publicUrl.includes('cloudinary.com')) {
+          doc.url = doc.publicUrl
+        }
+        
+        // Replace any localhost URLs with Cloudinary URLs if we have Cloudinary data
+        if (doc.url && typeof doc.url === 'string' && 
+            (doc.url.includes('localhost') || doc.url.includes('127.0.0.1'))) {
+          if (doc.publicUrl && typeof doc.publicUrl === 'string' && doc.publicUrl.includes('cloudinary.com')) {
+            doc.url = doc.publicUrl
+          } else if (doc.cloudinaryPublicId) {
+            const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
+              secure: true,
+            })
+            doc.url = cloudinaryUrl
+            doc.publicUrl = cloudinaryUrl
           }
         }
 
@@ -315,7 +374,7 @@ export const Media: CollectionConfig = {
       },
     ],
     afterDelete: [
-      async ({ doc, req }) => {
+      async ({ doc }) => {
         // Handle delete - remove from Cloudinary
         if (doc?.cloudinaryPublicId) {
           try {
