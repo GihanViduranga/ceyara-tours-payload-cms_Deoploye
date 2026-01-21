@@ -183,9 +183,13 @@ export interface Media {
    */
   alt?: string | null;
   /**
-   * Public URL of the image stored in Google Cloud Storage
+   * Public URL of the image stored in Cloudinary
    */
   publicUrl?: string | null;
+  /**
+   * Cloudinary public ID for the image
+   */
+  cloudinaryPublicId?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -1548,6 +1552,7 @@ export interface UsersSelect<T extends boolean = true> {
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   publicUrl?: T;
+  cloudinaryPublicId?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

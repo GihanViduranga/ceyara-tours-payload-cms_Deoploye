@@ -1,4 +1,54 @@
 import type { CollectionConfig } from 'payload'
+import { v2 as cloudinary } from 'cloudinary'
+import { Readable } from 'stream'
+import { existsSync, readFileSync } from 'fs'
+import path from 'path'
+
+// Configure Cloudinary
+const cloudinaryConfig = {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+}
+
+if (cloudinaryConfig.cloud_name && cloudinaryConfig.api_key && cloudinaryConfig.api_secret) {
+  cloudinary.config(cloudinaryConfig)
+}
+
+// Helper function to upload file buffer to Cloudinary
+async function uploadToCloudinary(
+  fileBuffer: Buffer,
+  filename: string,
+  folder: string = 'ceyara-tours'
+): Promise<{ secure_url: string; public_id: string }> {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: 'auto',
+        transformation: [
+          { quality: 'auto' },
+          { fetch_format: 'auto' },
+        ],
+      },
+      (error, result) => {
+        if (error) {
+          reject(error)
+        } else if (result) {
+          resolve({
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+          })
+        } else {
+          reject(new Error('Upload failed: No result'))
+        }
+      }
+    )
+
+    Readable.from(fileBuffer).pipe(uploadStream)
+  })
+}
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -29,7 +79,15 @@ export const Media: CollectionConfig = {
       type: 'text',
       admin: {
         readOnly: true,
-        description: 'Public URL of the image stored in Google Cloud Storage',
+        description: 'Public URL of the image stored in Cloudinary',
+      },
+    },
+    {
+      name: 'cloudinaryPublicId',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description: 'Cloudinary public ID for the image',
       },
     },
   ],
@@ -59,13 +117,6 @@ export const Media: CollectionConfig = {
   hooks: {
     beforeChange: [
       ({ data }) => {
-        // Before saving, copy url to publicUrl if url exists
-        // The GCS storage adapter sets the url field during upload
-        // We copy it to publicUrl for explicit access
-        if (data.url && typeof data.url === 'string') {
-          data.publicUrl = data.url
-        }
-
         // Auto-generate alt text from filename if not provided
         if (!data.alt || (typeof data.alt === 'string' && data.alt.trim() === '')) {
           const filename = data.filename || data.url
@@ -88,130 +139,125 @@ export const Media: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, req, operation }) => {
-        // After upload, ensure publicUrl is always set with the GCS public URL
-        // The GCS storage adapter sets doc.url with the public URL
-        // Format: https://storage.googleapis.com/bucket-name/filename.jpg
-
+      async ({ doc, req, operation, previousDoc }) => {
         // Use a flag to prevent infinite recursion when updating
-        const isUpdatingPublicUrl = (req as unknown as Record<string, unknown>).isUpdatingPublicUrl
-        if (isUpdatingPublicUrl) {
+        const isUpdatingCloudinary = (req as unknown as Record<string, unknown>).isUpdatingCloudinary
+        if (isUpdatingCloudinary) {
           return doc
         }
 
-        if (doc.url && typeof doc.url === 'string') {
-          const docWithPublicUrl = doc as Record<string, unknown>
-          const currentPublicUrl = docWithPublicUrl.publicUrl
+        // Upload to Cloudinary after file is created
+        if (operation === 'create' && doc.filename && !doc.cloudinaryPublicId) {
+          try {
+            // Payload stores files in the media directory when using local storage
+            // Check multiple possible locations
+            const possiblePaths = [
+              path.resolve(process.cwd(), 'media', doc.filename as string),
+              path.resolve(process.cwd(), 'public', 'media', doc.filename as string),
+              path.resolve(process.cwd(), doc.filename as string),
+              doc.url && typeof doc.url === 'string' && doc.url.startsWith('/') 
+                ? path.resolve(process.cwd(), 'public', doc.url)
+                : null,
+            ].filter(Boolean) as string[]
 
-          // Always update publicUrl if:
-          // 1. It doesn't exist
-          // 2. It doesn't match the url
-          // 3. It's not a string (might be an object ID)
-          const needsUpdate =
-            !currentPublicUrl ||
-            currentPublicUrl !== doc.url ||
-            typeof currentPublicUrl !== 'string'
+            let fileBuffer: Buffer | null = null
+            let foundPath: string | null = null
 
-          if (needsUpdate && doc.id) {
-            // For create operations, delay the update slightly to ensure document is fully saved
-            // For update operations, try immediately
-            const updateDelay = operation === 'create' ? 200 : 0
-
-            setTimeout(async () => {
-              let updateError: unknown = null
-              try {
-                // Set flag to prevent recursion
-                ;(req as unknown as Record<string, unknown>).isUpdatingPublicUrl = true
-
-                // Use Payload's update method to save the publicUrl
-                await req.payload.update({
-                  collection: 'media',
-                  id: doc.id,
-                  data: {
-                    publicUrl: doc.url,
-                  },
-                })
-                console.log('✓ Saved publicUrl to database:', doc.url)
-              } catch (error) {
-                updateError = error
-                // Log error but don't fail the upload
-                // The error might be due to document not being fully saved yet
-                // or access control issues - this is non-critical
-                if (
-                  error &&
-                  typeof error === 'object' &&
-                  'status' in error &&
-                  error.status === 404
-                ) {
-                  // Document not found - might be a timing issue, try once more after a delay
-                  setTimeout(async () => {
-                    try {
-                      await req.payload.update({
-                        collection: 'media',
-                        id: doc.id,
-                        data: {
-                          publicUrl: doc.url,
-                        },
-                      })
-                      console.log('✓ Saved publicUrl to database (retry):', doc.url)
-                    } catch (retryError) {
-                      // Silently fail - publicUrl will be set on next update
-                      console.warn('Failed to save publicUrl (retry failed):', retryError)
-                    } finally {
-                      delete (req as unknown as Record<string, unknown>).isUpdatingPublicUrl
-                    }
-                  }, 500)
-                  return // Don't clear flag yet, retry will do it
-                } else {
-                  console.warn('Failed to save publicUrl to database:', error)
-                }
-              } finally {
-                // Clear flag if not retrying (retry will clear it)
-                const isRetrying =
-                  updateError &&
-                  typeof updateError === 'object' &&
-                  'status' in updateError &&
-                  updateError.status === 404
-                if (!isRetrying) {
-                  delete (req as unknown as Record<string, unknown>).isUpdatingPublicUrl
-                }
+            // Try to find and read the file
+            for (const filePath of possiblePaths) {
+              if (existsSync(filePath)) {
+                fileBuffer = readFileSync(filePath)
+                foundPath = filePath
+                break
               }
-            }, updateDelay)
-          }
-        } else if (!doc.url && operation === 'create') {
-          // If url is not set yet, try to construct it from filename and bucket
-          const bucketName = process.env.GCP_BUCKET_NAME
-          const filename = (doc as Record<string, unknown>).filename
-          if (bucketName && filename && typeof filename === 'string' && doc.id) {
-            // Construct the public URL for GCS
-            // GCS public URLs format: https://storage.googleapis.com/bucket-name/path/to/file
-            const constructedUrl = `https://storage.googleapis.com/${bucketName}/${filename}`
+            }
 
-            // Delay update to ensure document is fully saved
-            setTimeout(async () => {
-              try {
-                // Set flag to prevent recursion
-                ;(req as unknown as Record<string, unknown>).isUpdatingPublicUrl = true
+            // If file found, upload to Cloudinary
+            if (fileBuffer && foundPath) {
+              const uploadResult = await uploadToCloudinary(
+                fileBuffer,
+                doc.filename as string,
+                'ceyara-tours'
+              )
 
-                // Use Payload's update method to save the constructed URL
-                await req.payload.update({
-                  collection: 'media',
-                  id: doc.id,
-                  data: {
-                    publicUrl: constructedUrl,
-                  },
-                })
-                console.log('✓ Constructed and saved publicUrl:', constructedUrl)
-              } catch (error) {
-                console.warn('Failed to construct and save publicUrl:', error)
-              } finally {
-                // Clear flag
-                delete (req as unknown as Record<string, unknown>).isUpdatingPublicUrl
+              // Update document with Cloudinary URLs
+              ;(req as unknown as Record<string, unknown>).isUpdatingCloudinary = true
+              await req.payload.update({
+                collection: 'media',
+                id: doc.id,
+                data: {
+                  publicUrl: uploadResult.secure_url,
+                  cloudinaryPublicId: uploadResult.public_id,
+                  url: uploadResult.secure_url, // Update main URL
+                },
+              })
+              console.log('✓ Uploaded to Cloudinary:', uploadResult.secure_url)
+              delete (req as unknown as Record<string, unknown>).isUpdatingCloudinary
+
+              // Optionally delete local file after upload (uncomment if desired)
+              // try {
+              //   if (existsSync(foundPath)) {
+              //     unlinkSync(foundPath)
+              //   }
+              // } catch (error) {
+              //   console.warn('Could not delete local file:', error)
+              // }
+            } else if (doc.url && typeof doc.url === 'string') {
+              // If file doesn't exist locally but URL is already a Cloudinary URL
+              if (doc.url.includes('cloudinary.com')) {
+                // Extract public_id from Cloudinary URL
+                const urlMatch = doc.url.match(/\/v\d+\/(.+?)(?:\.[^.]+)?$/)
+                if (urlMatch && urlMatch[1]) {
+                  const publicId = urlMatch[1]
+                  ;(req as unknown as Record<string, unknown>).isUpdatingCloudinary = true
+                  await req.payload.update({
+                    collection: 'media',
+                    id: doc.id,
+                    data: {
+                      publicUrl: doc.url,
+                      cloudinaryPublicId: publicId,
+                    },
+                  })
+                  delete (req as unknown as Record<string, unknown>).isUpdatingCloudinary
+                }
+              } else {
+                // If URL is a local URL, try to upload it
+                console.warn('File not found locally, but URL exists:', doc.url)
+                console.warn('You may need to upload this file manually to Cloudinary')
               }
-            }, 200)
+            }
+          } catch (error) {
+            console.error('Error uploading to Cloudinary:', error)
+            delete (req as unknown as Record<string, unknown>).isUpdatingCloudinary
           }
         }
+
+        // Ensure publicUrl is set from Cloudinary if available
+        if (doc.cloudinaryPublicId && !doc.publicUrl) {
+          const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
+            secure: true,
+          })
+          return {
+            ...doc,
+            publicUrl: cloudinaryUrl,
+            url: cloudinaryUrl,
+          }
+        }
+
         return doc
+      },
+    ],
+    afterDelete: [
+      async ({ doc, req }) => {
+        // Handle delete - remove from Cloudinary
+        if (doc?.cloudinaryPublicId) {
+          try {
+            await cloudinary.uploader.destroy(doc.cloudinaryPublicId as string)
+            console.log('✓ Deleted from Cloudinary:', doc.cloudinaryPublicId)
+          } catch (error) {
+            console.error('Error deleting from Cloudinary:', error)
+          }
+        }
       },
     ],
   },

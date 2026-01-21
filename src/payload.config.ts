@@ -1,6 +1,4 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
-import { gcsStorage } from '@payloadcms/storage-gcs'
-import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 import { buildConfig } from 'payload'
 import sharp from 'sharp'
@@ -27,50 +25,21 @@ import { VisitingPlaces } from './collections/VisitingPlaces'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
-// Resolve GCS key file path
-const getGcsKeyFilePath = (): string => {
-  if (process.env.GCP_KEY_FILE) {
-    return path.isAbsolute(process.env.GCP_KEY_FILE)
-      ? process.env.GCP_KEY_FILE
-      : path.resolve(process.cwd(), process.env.GCP_KEY_FILE)
-  }
-  return path.resolve(process.cwd(), 'gcp-service-account.json')
-}
+// Verify Cloudinary configuration
+const useCloudinaryStorage = !!(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+)
 
-const gcsKeyFilePath = getGcsKeyFilePath()
-
-// Verify the key file exists and is valid JSON
-let gcsKeyFileValid = false
-if (existsSync(gcsKeyFilePath)) {
-  try {
-    const keyFileContent = readFileSync(gcsKeyFilePath, 'utf8')
-    const parsed = JSON.parse(keyFileContent)
-    if (parsed.type === 'service_account' && parsed.private_key && parsed.client_email) {
-      gcsKeyFileValid = true
-      console.log('✓ GCS credentials file validated:', gcsKeyFilePath)
-    } else {
-      console.error('✗ GCS credentials file is missing required fields')
-    }
-  } catch (error) {
-    console.error('✗ GCS credentials file is not valid JSON:', error)
-  }
+if (!useCloudinaryStorage) {
+  console.warn('⚠️  Cloudinary Storage not configured. Using local storage.')
+  console.warn('   Required environment variables:')
+  console.warn('   - CLOUDINARY_CLOUD_NAME')
+  console.warn('   - CLOUDINARY_API_KEY')
+  console.warn('   - CLOUDINARY_API_SECRET')
 } else {
-  console.error('✗ GCS credentials file not found at:', gcsKeyFilePath)
-  console.error('  Please ensure the file exists and the path is correct.')
-}
-
-// Determine if GCS storage will be used
-const useGcsStorage = process.env.GCP_BUCKET_NAME && gcsKeyFileValid && existsSync(gcsKeyFilePath)
-
-// Warn if GCS storage cannot be initialized
-if (!useGcsStorage && process.env.GCP_BUCKET_NAME) {
-  console.warn('⚠️  GCS Storage plugin will not be initialized.')
-  if (!process.env.GCP_BUCKET_NAME) {
-    console.warn('   Missing: GCP_BUCKET_NAME environment variable')
-  }
-  if (!gcsKeyFileValid) {
-    console.warn('   Invalid or missing GCS credentials file')
-  }
+  console.log('✓ Cloudinary Storage configured')
 }
 
 export default buildConfig({
@@ -79,23 +48,8 @@ export default buildConfig({
   },
   collections: [
     Users,
-    // Configure Media collection - add staticDir if GCS is not configured
-    useGcsStorage
-      ? MediaCollection
-      : (() => {
-          const mediaConfig = { ...MediaCollection }
-          if (mediaConfig.upload && typeof mediaConfig.upload === 'object') {
-            mediaConfig.upload = {
-              ...mediaConfig.upload,
-              staticDir: 'media',
-            }
-          } else {
-            mediaConfig.upload = {
-              staticDir: 'media',
-            }
-          }
-          return mediaConfig
-        })(),
+    // Media collection uses Cloudinary via hooks
+    MediaCollection,
     ItineraryPages,
     AccommodationPages,
     DestinationPages,
@@ -113,20 +67,7 @@ export default buildConfig({
     TourRequest,
   ],
   plugins: [
-    ...(useGcsStorage
-      ? [
-          gcsStorage({
-            collections: {
-              media: true,
-            },
-            bucket: process.env.GCP_BUCKET_NAME!,
-            options: {
-              projectId: process.env.GCP_PROJECT_ID,
-              keyFilename: gcsKeyFilePath,
-            },
-          }),
-        ]
-      : []),
+    // Cloudinary integration is handled via hooks in Media collection
   ],
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
