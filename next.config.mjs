@@ -11,17 +11,8 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'storage.googleapis.com',
+        hostname: 'res.cloudinary.com',
         pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'storage.cloud.google.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '**',
       },
       {
         protocol: 'http',
