@@ -475,55 +475,74 @@ export const Media: CollectionConfig = {
           }
         }
 
-        // Ensure publicUrl and url are always set to Cloudinary URLs if available
-        if (doc.cloudinaryPublicId) {
-          const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
-            secure: true,
-          })
-          
-          // Always use Cloudinary URL if we have publicId
-          return {
-            ...doc,
-            publicUrl: cloudinaryUrl,
-            url: cloudinaryUrl,
-          }
-        }
-        
-        // If publicUrl exists and is a Cloudinary URL, ensure url matches
-        if (doc.publicUrl && typeof doc.publicUrl === 'string' && doc.publicUrl.includes('cloudinary.com')) {
-          return {
-            ...doc,
-            url: doc.publicUrl,
-          }
-        }
-        
-        // Replace any localhost/Vercel URLs with Cloudinary URLs if we have Cloudinary data
-        if (doc.url && typeof doc.url === 'string') {
-          const isLocalOrVercel = 
-            doc.url.includes('localhost') || 
-            doc.url.includes('127.0.0.1') ||
-            doc.url.includes('vercel.app') ||
-            doc.url.includes('vercel.com')
-          
-          if (isLocalOrVercel) {
-            if (doc.publicUrl && typeof doc.publicUrl === 'string' && doc.publicUrl.includes('cloudinary.com')) {
-              return {
-                ...doc,
-                url: doc.publicUrl,
-              }
-            } else if (doc.cloudinaryPublicId) {
+        // IMPORTANT: Only modify URLs during create operations that just uploaded to Cloudinary
+        // For update operations, URL modification should happen in afterRead hook, not here
+        // This prevents errors during PATCH/UPDATE operations
+        if (operation === 'create') {
+          // Ensure publicUrl and url are always set to Cloudinary URLs if available
+          if (doc.cloudinaryPublicId && isCloudinaryConfigured) {
+            try {
               const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
                 secure: true,
               })
+              
+              // Always use Cloudinary URL if we have publicId
               return {
                 ...doc,
-                url: cloudinaryUrl,
                 publicUrl: cloudinaryUrl,
+                url: cloudinaryUrl,
+              }
+            } catch (error) {
+              // If Cloudinary URL generation fails, log but don't break the request
+              console.warn('⚠️  Failed to generate Cloudinary URL:', error)
+              return doc
+            }
+          }
+          
+          // If publicUrl exists and is a Cloudinary URL, ensure url matches
+          if (doc.publicUrl && typeof doc.publicUrl === 'string' && doc.publicUrl.includes('cloudinary.com')) {
+            return {
+              ...doc,
+              url: doc.publicUrl,
+            }
+          }
+          
+          // Replace any localhost/Vercel URLs with Cloudinary URLs if we have Cloudinary data
+          if (doc.url && typeof doc.url === 'string') {
+            const isLocalOrVercel = 
+              doc.url.includes('localhost') || 
+              doc.url.includes('127.0.0.1') ||
+              doc.url.includes('vercel.app') ||
+              doc.url.includes('vercel.com')
+            
+            if (isLocalOrVercel) {
+              if (doc.publicUrl && typeof doc.publicUrl === 'string' && doc.publicUrl.includes('cloudinary.com')) {
+                return {
+                  ...doc,
+                  url: doc.publicUrl,
+                }
+              } else if (doc.cloudinaryPublicId && isCloudinaryConfigured) {
+                try {
+                  const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
+                    secure: true,
+                  })
+                  return {
+                    ...doc,
+                    url: cloudinaryUrl,
+                    publicUrl: cloudinaryUrl,
+                  }
+                } catch (error) {
+                  // If Cloudinary URL generation fails, log but don't break the request
+                  console.warn('⚠️  Failed to generate Cloudinary URL:', error)
+                  return doc
+                }
               }
             }
           }
         }
 
+        // For update operations, just return the doc as-is
+        // URL modification will happen in afterRead hook when the document is read
         return doc
       },
     ],
