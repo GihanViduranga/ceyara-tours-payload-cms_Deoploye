@@ -57,8 +57,10 @@ function getTranslatedValue(
   return value
 }
 
-function getImageUrl(image?: { url?: string; filename?: string }): string {
+function getImageUrl(image?: { url?: string; publicUrl?: string; filename?: string }): string {
   if (!image) return '/api/placeholder/400/300'
+  // Prioritize Cloudinary publicUrl for production
+  if (image.publicUrl) return image.publicUrl
   if (image.url) return image.url
   if (image.filename) return `/api/media/file/${image.filename}`
   return '/api/placeholder/400/300'

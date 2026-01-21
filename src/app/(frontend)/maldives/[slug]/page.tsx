@@ -125,7 +125,9 @@ export default function MaldivesDetailPage({ params }: { params: Promise<{ slug:
     fetchPackage()
   }, [slug])
 
-  const getImageUrl = (image?: { url?: string; filename?: string }) => {
+  const getImageUrl = (image?: { url?: string; publicUrl?: string; filename?: string }) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (image?.publicUrl) return image.publicUrl
     if (image?.url) return image.url
     if (image?.filename) return `/api/media/file/${image.filename}`
     return '/api/placeholder/800/600'

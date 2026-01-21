@@ -27,6 +27,7 @@ interface Destination {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -43,6 +44,7 @@ interface Experience {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -106,6 +108,10 @@ export default function DiscoverSriLankaPage() {
   }, [])
 
   const getImageUrl = (item: Destination | Experience) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (item.image?.publicUrl) {
+      return item.image.publicUrl
+    }
     if (item.image?.url) {
       return item.image.url
     }

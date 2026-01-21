@@ -30,6 +30,7 @@ interface Tour {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -128,6 +129,10 @@ export default function ItinerariesPage() {
   }, [])
 
   const getImageUrl = (tour: Tour) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (tour.image?.publicUrl) {
+      return tour.image.publicUrl
+    }
     if (tour.image?.url) {
       return tour.image.url
     }

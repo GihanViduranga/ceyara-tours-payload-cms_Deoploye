@@ -27,6 +27,7 @@ interface Experience {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -78,6 +79,10 @@ export default function ExperiencesPage() {
   }, [])
 
   const getImageUrl = (experience: Experience) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (experience.image?.publicUrl) {
+      return experience.image.publicUrl
+    }
     if (experience.image?.url) {
       return experience.image.url
     }

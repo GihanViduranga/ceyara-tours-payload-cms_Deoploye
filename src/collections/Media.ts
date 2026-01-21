@@ -1,8 +1,8 @@
-import type { CollectionConfig } from 'payload'
 import { v2 as cloudinary } from 'cloudinary'
-import { Readable } from 'stream'
 import { existsSync, readFileSync } from 'fs'
 import path from 'path'
+import type { CollectionConfig } from 'payload'
+import { Readable } from 'stream'
 
 // Configure Cloudinary
 const cloudinaryConfig = {
@@ -136,6 +136,23 @@ export const Media: CollectionConfig = {
         }
 
         return data
+      },
+    ],
+    afterRead: [
+      ({ doc }) => {
+        // Ensure url is always set from publicUrl (Cloudinary) if available
+        // This ensures images display correctly in production
+        if (doc.publicUrl) {
+          doc.url = doc.publicUrl
+        } else if (doc.cloudinaryPublicId) {
+          // Generate Cloudinary URL from public_id if publicUrl is missing
+          const cloudinaryUrl = cloudinary.url(doc.cloudinaryPublicId as string, {
+            secure: true,
+          })
+          doc.url = cloudinaryUrl
+          doc.publicUrl = cloudinaryUrl
+        }
+        return doc
       },
     ],
     afterChange: [

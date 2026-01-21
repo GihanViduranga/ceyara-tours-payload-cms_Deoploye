@@ -28,6 +28,7 @@ interface Accommodation {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -81,6 +82,10 @@ export default function AccommodationPage() {
   }, [])
 
   const getImageUrl = (accommodation: Accommodation) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (accommodation.image?.publicUrl) {
+      return accommodation.image.publicUrl
+    }
     if (accommodation.image?.url) {
       return accommodation.image.url
     }

@@ -27,6 +27,7 @@ interface Destination {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -78,6 +79,10 @@ export default function DestinationsPage() {
   }, [])
 
   const getImageUrl = (destination: Destination) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (destination.image?.publicUrl) {
+      return destination.image.publicUrl
+    }
     if (destination.image?.url) {
       return destination.image.url
     }

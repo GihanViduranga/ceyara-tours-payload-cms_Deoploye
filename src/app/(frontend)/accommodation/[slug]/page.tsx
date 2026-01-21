@@ -63,12 +63,14 @@ interface Accommodation {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
   mainImage?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -139,7 +141,11 @@ export default function AccommodationDetailPage({ params }: { params: Promise<{ 
     fetchAccommodation()
   }, [slug])
 
-  const getImageUrl = (image?: { url?: string; filename?: string }) => {
+  const getImageUrl = (image?: { url?: string; publicUrl?: string; filename?: string }) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (image?.publicUrl) {
+      return image.publicUrl
+    }
     if (image?.url) {
       return image.url
     }

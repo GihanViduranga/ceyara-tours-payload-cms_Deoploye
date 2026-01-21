@@ -12,6 +12,7 @@ interface DayImage {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -54,12 +55,14 @@ interface Tour {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
   mainImage?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -148,7 +151,11 @@ export default function TourDetailPage({
     fetchTour()
   }, [slug, category])
 
-  const getImageUrl = (image?: { url?: string; filename?: string }) => {
+  const getImageUrl = (image?: { url?: string; publicUrl?: string; filename?: string }) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (image?.publicUrl) {
+      return image.publicUrl
+    }
     if (image?.url) {
       return image.url
     }

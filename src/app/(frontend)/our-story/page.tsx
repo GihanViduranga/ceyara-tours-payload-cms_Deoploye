@@ -15,6 +15,7 @@ interface GalleryImage {
   image?: {
     id: string
     url?: string
+    publicUrl?: string
     filename?: string
     alt?: string
   }
@@ -101,6 +102,10 @@ export default function AboutPage() {
   }, [])
 
   const getImageUrl = (image: GalleryImage) => {
+    // Prioritize Cloudinary publicUrl for production
+    if (image.image?.publicUrl) {
+      return image.image.publicUrl
+    }
     if (image.image?.url) {
       return image.image.url
     }
