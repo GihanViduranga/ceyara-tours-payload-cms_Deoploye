@@ -25,6 +25,17 @@ const nextConfig = {
         hostname: 'ui-avatars.com',
         pathname: '/**',
       },
+      // Production domain for /api/media endpoint (fallback if Cloudinary fails)
+      // Add your Vercel domain here, or it will be auto-detected from NEXT_PUBLIC_SERVER_URL
+      ...(process.env.NEXT_PUBLIC_SERVER_URL && process.env.NEXT_PUBLIC_SERVER_URL.includes('http')
+        ? [
+            {
+              protocol: 'https',
+              hostname: new URL(process.env.NEXT_PUBLIC_SERVER_URL).hostname,
+              pathname: '/api/media/**',
+            },
+          ]
+        : []),
     ],
     // Cache optimized images for 60 seconds
     minimumCacheTTL: 60,
