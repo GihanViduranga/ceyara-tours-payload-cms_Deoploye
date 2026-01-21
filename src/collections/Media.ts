@@ -116,7 +116,7 @@ export const Media: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      ({ data }) => {
+      async ({ data, req, operation }) => {
         // Auto-generate alt text from filename if not provided
         if (!data.alt || (typeof data.alt === 'string' && data.alt.trim() === '')) {
           const filename = data.filename || data.url
@@ -132,6 +132,29 @@ export const Media: CollectionConfig = {
             data.alt = nameWithoutExt
           } else {
             data.alt = 'Image'
+          }
+        }
+
+        // Store file buffer in request for afterChange hook (works in serverless)
+        // This captures the file data before it's saved to disk
+        if (operation === 'create') {
+          try {
+            // Try different ways to access file data depending on Payload version
+            const fileData = 
+              (req as any).file?.data || 
+              (req as any).files?.file?.data ||
+              (req as any).file?.buffer ||
+              (req as any).files?.file?.buffer
+
+            if (fileData) {
+              // Store buffer for afterChange hook
+              ;(req as any).fileBufferForCloudinary = Buffer.isBuffer(fileData) 
+                ? fileData 
+                : Buffer.from(fileData)
+            }
+          } catch (error) {
+            // Silently fail - we'll try filesystem in afterChange as fallback
+            console.warn('Could not capture file buffer in beforeChange:', error)
           }
         }
 
@@ -156,7 +179,7 @@ export const Media: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, req, operation, previousDoc }) => {
+      async ({ doc, req, operation }) => {
         // Use a flag to prevent infinite recursion when updating
         const isUpdatingCloudinary = (req as unknown as Record<string, unknown>).isUpdatingCloudinary
         if (isUpdatingCloudinary) {
@@ -166,31 +189,59 @@ export const Media: CollectionConfig = {
         // Upload to Cloudinary after file is created
         if (operation === 'create' && doc.filename && !doc.cloudinaryPublicId) {
           try {
-            // Payload stores files in the media directory when using local storage
-            // Check multiple possible locations
-            const possiblePaths = [
-              path.resolve(process.cwd(), 'media', doc.filename as string),
-              path.resolve(process.cwd(), 'public', 'media', doc.filename as string),
-              path.resolve(process.cwd(), doc.filename as string),
-              doc.url && typeof doc.url === 'string' && doc.url.startsWith('/') 
-                ? path.resolve(process.cwd(), 'public', doc.url)
-                : null,
-            ].filter(Boolean) as string[]
-
             let fileBuffer: Buffer | null = null
-            let foundPath: string | null = null
 
-            // Try to find and read the file
-            for (const filePath of possiblePaths) {
-              if (existsSync(filePath)) {
-                fileBuffer = readFileSync(filePath)
-                foundPath = filePath
-                break
+            // Method 1: Use file buffer captured in beforeChange hook (works in serverless)
+            if ((req as any).fileBufferForCloudinary) {
+              fileBuffer = (req as any).fileBufferForCloudinary
+              console.log('✓ Using file buffer from request (serverless-friendly)')
+            }
+            // Method 2: Try to get file data directly from request (fallback)
+            else {
+              const fileData = 
+                (req as any).file?.data || 
+                (req as any).files?.file?.data ||
+                (req as any).file?.buffer ||
+                (req as any).files?.file?.buffer
+
+              if (fileData) {
+                fileBuffer = Buffer.isBuffer(fileData) ? fileData : Buffer.from(fileData)
+                console.log('✓ Using file data from request object')
               }
             }
 
-            // If file found, upload to Cloudinary
-            if (fileBuffer && foundPath) {
+            // Method 3: Try filesystem as last resort (works in local dev, may fail in serverless)
+            if (!fileBuffer) {
+              try {
+                const possiblePaths = [
+                  path.resolve(process.cwd(), 'media', doc.filename as string),
+                  path.resolve(process.cwd(), 'public', 'media', doc.filename as string),
+                  path.resolve(process.cwd(), doc.filename as string),
+                  doc.url && typeof doc.url === 'string' && doc.url.startsWith('/') 
+                    ? path.resolve(process.cwd(), 'public', doc.url)
+                    : null,
+                ].filter(Boolean) as string[]
+
+                for (const filePath of possiblePaths) {
+                  try {
+                    if (existsSync(filePath)) {
+                      fileBuffer = readFileSync(filePath)
+                      console.log('✓ Using file from filesystem:', filePath)
+                      break
+                    }
+                  } catch (fsError) {
+                    // Continue to next path
+                    continue
+                  }
+                }
+              } catch (fsError) {
+                // Filesystem access failed (expected in serverless) - continue to URL fallback
+                console.warn('Filesystem access not available (normal in serverless)')
+              }
+            }
+
+            // If we have a file buffer, upload to Cloudinary
+            if (fileBuffer) {
               const uploadResult = await uploadToCloudinary(
                 fileBuffer,
                 doc.filename as string,
@@ -205,47 +256,46 @@ export const Media: CollectionConfig = {
                 data: {
                   publicUrl: uploadResult.secure_url,
                   cloudinaryPublicId: uploadResult.public_id,
-                  url: uploadResult.secure_url, // Update main URL
+                  url: uploadResult.secure_url,
                 },
               })
               console.log('✓ Uploaded to Cloudinary:', uploadResult.secure_url)
               delete (req as unknown as Record<string, unknown>).isUpdatingCloudinary
-
-              // Optionally delete local file after upload (uncomment if desired)
-              // try {
-              //   if (existsSync(foundPath)) {
-              //     unlinkSync(foundPath)
-              //   }
-              // } catch (error) {
-              //   console.warn('Could not delete local file:', error)
-              // }
-            } else if (doc.url && typeof doc.url === 'string') {
-              // If file doesn't exist locally but URL is already a Cloudinary URL
-              if (doc.url.includes('cloudinary.com')) {
-                // Extract public_id from Cloudinary URL
-                const urlMatch = doc.url.match(/\/v\d+\/(.+?)(?:\.[^.]+)?$/)
-                if (urlMatch && urlMatch[1]) {
-                  const publicId = urlMatch[1]
-                  ;(req as unknown as Record<string, unknown>).isUpdatingCloudinary = true
-                  await req.payload.update({
-                    collection: 'media',
-                    id: doc.id,
-                    data: {
-                      publicUrl: doc.url,
-                      cloudinaryPublicId: publicId,
-                    },
-                  })
-                  delete (req as unknown as Record<string, unknown>).isUpdatingCloudinary
-                }
-              } else {
-                // If URL is a local URL, try to upload it
-                console.warn('File not found locally, but URL exists:', doc.url)
-                console.warn('You may need to upload this file manually to Cloudinary')
+              delete (req as any).fileBufferForCloudinary
+            } 
+            // Fallback: If URL is already a Cloudinary URL, extract metadata
+            else if (doc.url && typeof doc.url === 'string' && doc.url.includes('cloudinary.com')) {
+              const urlMatch = doc.url.match(/\/v\d+\/(.+?)(?:\.[^.]+)?$/)
+              if (urlMatch && urlMatch[1]) {
+                const publicId = urlMatch[1]
+                ;(req as unknown as Record<string, unknown>).isUpdatingCloudinary = true
+                await req.payload.update({
+                  collection: 'media',
+                  id: doc.id,
+                  data: {
+                    publicUrl: doc.url,
+                    cloudinaryPublicId: publicId,
+                  },
+                })
+                console.log('✓ Extracted Cloudinary metadata from existing URL')
+                delete (req as unknown as Record<string, unknown>).isUpdatingCloudinary
               }
+            } 
+            // Last resort: Log warning but don't fail the request
+            else {
+              console.warn('⚠️  Could not access file for Cloudinary upload:', doc.filename)
+              console.warn('   File URL:', doc.url)
+              console.warn('   This may happen in serverless environments.')
+              console.warn('   The file was saved, but Cloudinary upload will need to be done manually.')
             }
           } catch (error) {
-            console.error('Error uploading to Cloudinary:', error)
+            // Don't fail the request if Cloudinary upload fails
+            console.error('❌ Error uploading to Cloudinary:', error)
+            console.error('   File was still saved to database:', doc.id)
+          } finally {
+            // Clean up
             delete (req as unknown as Record<string, unknown>).isUpdatingCloudinary
+            delete (req as any).fileBufferForCloudinary
           }
         }
 
