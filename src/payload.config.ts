@@ -42,6 +42,18 @@ if (!useCloudinaryStorage) {
   console.log('✓ Cloudinary Storage configured')
 }
 
+// Verify MongoDB configuration
+const databaseUri = process.env.DATABASE_URI || 'mongodb://localhost:27017/ceyara-tours'
+if (!process.env.DATABASE_URI) {
+  console.warn('⚠️  DATABASE_URI not set. Using default local MongoDB connection.')
+  console.warn('   Set DATABASE_URI in your .env file for production.')
+} else if (databaseUri.includes('username:password') || databaseUri.includes('your-')) {
+  console.error('❌ DATABASE_URI appears to contain placeholder values!')
+  console.error('   Please update your .env file with a valid MongoDB connection string.')
+} else {
+  console.log('✓ MongoDB connection string configured')
+}
+
 export default buildConfig({
   admin: {
     user: 'users',
@@ -77,5 +89,12 @@ export default buildConfig({
   sharp,
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || 'mongodb://localhost:27017/ceyara-tours',
+    connectOptions: {
+      connectTimeoutMS: 60000, // Increase timeout to 60 seconds
+      socketTimeoutMS: 60000,
+      serverSelectionTimeoutMS: 60000,
+      retryWrites: true,
+      retryReads: true,
+    },
   }),
 })

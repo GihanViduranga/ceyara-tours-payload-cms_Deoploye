@@ -20,6 +20,11 @@ const nextConfig = {
         port: '3000',
         pathname: '/api/media/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'ui-avatars.com',
+        pathname: '/**',
+      },
     ],
     // Cache optimized images for 60 seconds
     minimumCacheTTL: 60,
