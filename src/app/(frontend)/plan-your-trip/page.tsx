@@ -2521,8 +2521,7 @@ export default function PlanYourTripPage() {
                     <strong>Images:</strong>
                     <div className="hotel-images-grid">
                       {selectedHotel.images.map((img, idx) => {
-                        // Prioritize Cloudinary publicUrl for production
-                        const imageUrl = img.image?.publicUrl || img.image?.url || (img.image?.filename ? `/api/media/file/${img.image.filename}` : null)
+                        const imageUrl = img.image?.url || img.image?.publicUrl || (img.image?.filename ? `/api/media/file/${img.image.filename}` : null)
                         return imageUrl ? (
                           <img key={idx} src={imageUrl} alt={`${selectedHotel.hotelName} - Image ${idx + 1}`} className="hotel-image" />
                         ) : null
