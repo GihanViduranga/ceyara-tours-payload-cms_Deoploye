@@ -97,6 +97,9 @@ export default function PlanYourTripPage() {
     passengerCount: number
     lkrPerKilometer: number
   } | null>(null)
+  const [expectedStartDate, setExpectedStartDate] = useState<string>('')
+  const [startingTime, setStartingTime] = useState<string>('')
+  const [guestCount, setGuestCount] = useState<number>(1)
   const [totalDurationSeconds, setTotalDurationSeconds] = useState<number>(0)
   const [typedLocation, setTypedLocation] = useState<{
     lat: number
@@ -1715,6 +1718,51 @@ export default function PlanYourTripPage() {
           <div className="plan-stepper-header">
             <h1>{t('nav.planYourTrip') || 'Plan Your Trip'}</h1>
             <p>{t('planYourTrip.subtitle') || 'Plan smarter, travel better'}</p>
+          </div>
+
+          {/* Trip Details - Date, Time, Guest Count */}
+          <div className="trip-details-container">
+            <div className="trip-details-row">
+              <div className="trip-detail-field">
+                <label htmlFor="expected-start-date" className="trip-detail-label">
+                  {t('planYourTrip.expectedStartDate') || 'Expected Starting Date'}
+                </label>
+                <input
+                  type="date"
+                  id="expected-start-date"
+                  value={expectedStartDate}
+                  onChange={(e) => setExpectedStartDate(e.target.value)}
+                  className="trip-detail-input"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div className="trip-detail-field">
+                <label htmlFor="starting-time" className="trip-detail-label">
+                  {t('planYourTrip.startingTime') || 'Starting Time'}
+                </label>
+                <input
+                  type="time"
+                  id="starting-time"
+                  value={startingTime}
+                  onChange={(e) => setStartingTime(e.target.value)}
+                  className="trip-detail-input"
+                />
+              </div>
+              <div className="trip-detail-field">
+                <label htmlFor="guest-count" className="trip-detail-label">
+                  {t('planYourTrip.guestCount') || 'Guest Count'}
+                </label>
+                <input
+                  type="number"
+                  id="guest-count"
+                  value={guestCount}
+                  onChange={(e) => setGuestCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="trip-detail-input"
+                  min={1}
+                  max={50}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Vehicle Selection */}
