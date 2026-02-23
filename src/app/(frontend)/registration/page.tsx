@@ -75,15 +75,51 @@ export default function RegistrationPage() {
     profilePhoto: null as File | null,
     nicPhotoFront: null as File | null,
     nicPhotoBack: null as File | null,
+    // Driver-specific fields
+    drivingLicenceFront: null as File | null,
+    drivingLicenceBack: null as File | null,
+    yearsOfExperience: '',
+    languagesSpoken: '',
+    areasFamiliar: [] as string[],
+    vehicleType: '',
+    vehicleRegistrationBook: null as File | null,
+    revenueLicence: null as File | null,
+    insuranceCard: null as File | null,
+    vehiclePhotoFront: null as File | null,
+    vehiclePhotoBack: null as File | null,
+    vehiclePhotoSide: null as File | null,
+    vehiclePhotoInterior: null as File | null,
+    bankName: '',
+    bankBranch: '',
+    accountHolderName: '',
+    accountNumber: '',
   })
   const [imagePreviews, setImagePreviews] = useState<{
     profilePhoto: string | null
     nicPhotoFront: string | null
     nicPhotoBack: string | null
+    drivingLicenceFront: string | null
+    drivingLicenceBack: string | null
+    vehicleRegistrationBook: string | null
+    revenueLicence: string | null
+    insuranceCard: string | null
+    vehiclePhotoFront: string | null
+    vehiclePhotoBack: string | null
+    vehiclePhotoSide: string | null
+    vehiclePhotoInterior: string | null
   }>({
     profilePhoto: null,
     nicPhotoFront: null,
     nicPhotoBack: null,
+    drivingLicenceFront: null,
+    drivingLicenceBack: null,
+    vehicleRegistrationBook: null,
+    revenueLicence: null,
+    insuranceCard: null,
+    vehiclePhotoFront: null,
+    vehiclePhotoBack: null,
+    vehiclePhotoSide: null,
+    vehiclePhotoInterior: null,
   })
   const [registering, setRegistering] = useState(false)
   const [registerMessage, setRegisterMessage] = useState<{
@@ -387,17 +423,55 @@ export default function RegistrationPage() {
       profilePhoto: null,
       nicPhotoFront: null,
       nicPhotoBack: null,
+      drivingLicenceFront: null,
+      drivingLicenceBack: null,
+      yearsOfExperience: '',
+      languagesSpoken: '',
+      areasFamiliar: [],
+      vehicleType: '',
+      vehicleRegistrationBook: null,
+      revenueLicence: null,
+      insuranceCard: null,
+      vehiclePhotoFront: null,
+      vehiclePhotoBack: null,
+      vehiclePhotoSide: null,
+      vehiclePhotoInterior: null,
+      bankName: '',
+      bankBranch: '',
+      accountHolderName: '',
+      accountNumber: '',
     })
     setImagePreviews({
       profilePhoto: null,
       nicPhotoFront: null,
       nicPhotoBack: null,
+      drivingLicenceFront: null,
+      drivingLicenceBack: null,
+      vehicleRegistrationBook: null,
+      revenueLicence: null,
+      insuranceCard: null,
+      vehiclePhotoFront: null,
+      vehiclePhotoBack: null,
+      vehiclePhotoSide: null,
+      vehiclePhotoInterior: null,
     })
   }
 
   // Handle file input changes with preview
   const handleFileChange = (
-    field: 'profilePhoto' | 'nicPhotoFront' | 'nicPhotoBack',
+    field:
+      | 'profilePhoto'
+      | 'nicPhotoFront'
+      | 'nicPhotoBack'
+      | 'drivingLicenceFront'
+      | 'drivingLicenceBack'
+      | 'vehicleRegistrationBook'
+      | 'revenueLicence'
+      | 'insuranceCard'
+      | 'vehiclePhotoFront'
+      | 'vehiclePhotoBack'
+      | 'vehiclePhotoSide'
+      | 'vehiclePhotoInterior',
     file: File | null,
   ) => {
     setRegistrationFormData({ ...registrationFormData, [field]: file })
@@ -450,6 +524,16 @@ export default function RegistrationPage() {
       let profilePhotoId: string | null = null
       let nicPhotoFrontId: string | null = null
       let nicPhotoBackId: string | null = null
+      // Driver-specific file IDs
+      let drivingLicenceFrontId: string | null = null
+      let drivingLicenceBackId: string | null = null
+      let vehicleRegistrationBookId: string | null = null
+      let revenueLicenceId: string | null = null
+      let insuranceCardId: string | null = null
+      let vehiclePhotoFrontId: string | null = null
+      let vehiclePhotoBackId: string | null = null
+      let vehiclePhotoSideId: string | null = null
+      let vehiclePhotoInteriorId: string | null = null
       const uploadErrors: string[] = []
 
       if (registrationFormData.profilePhoto) {
@@ -489,6 +573,64 @@ export default function RegistrationPage() {
         }
       }
 
+      // Driver-specific file uploads
+      if (registrationType === 'driver') {
+        if (registrationFormData.drivingLicenceFront) {
+          drivingLicenceFrontId = await uploadFileToMedia(
+            registrationFormData.drivingLicenceFront,
+            `Driving Licence Front - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.drivingLicenceBack) {
+          drivingLicenceBackId = await uploadFileToMedia(
+            registrationFormData.drivingLicenceBack,
+            `Driving Licence Back - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.vehicleRegistrationBook) {
+          vehicleRegistrationBookId = await uploadFileToMedia(
+            registrationFormData.vehicleRegistrationBook,
+            `Vehicle Registration Book - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.revenueLicence) {
+          revenueLicenceId = await uploadFileToMedia(
+            registrationFormData.revenueLicence,
+            `Revenue Licence - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.insuranceCard) {
+          insuranceCardId = await uploadFileToMedia(
+            registrationFormData.insuranceCard,
+            `Insurance Card - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.vehiclePhotoFront) {
+          vehiclePhotoFrontId = await uploadFileToMedia(
+            registrationFormData.vehiclePhotoFront,
+            `Vehicle Photo Front - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.vehiclePhotoBack) {
+          vehiclePhotoBackId = await uploadFileToMedia(
+            registrationFormData.vehiclePhotoBack,
+            `Vehicle Photo Back - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.vehiclePhotoSide) {
+          vehiclePhotoSideId = await uploadFileToMedia(
+            registrationFormData.vehiclePhotoSide,
+            `Vehicle Photo Side - ${registrationFormData.fullName}`,
+          )
+        }
+        if (registrationFormData.vehiclePhotoInterior) {
+          vehiclePhotoInteriorId = await uploadFileToMedia(
+            registrationFormData.vehiclePhotoInterior,
+            `Vehicle Photo Interior - ${registrationFormData.fullName}`,
+          )
+        }
+      }
+
       // Prepare the data object
       const dataToSubmit: Record<string, unknown> = {
         fullName: registrationFormData.fullName,
@@ -518,6 +660,62 @@ export default function RegistrationPage() {
       }
       if (nicPhotoBackId) {
         dataToSubmit.nicPhotoBack = nicPhotoBackId
+      }
+
+      // Add driver-specific fields
+      if (registrationType === 'driver') {
+        if (registrationFormData.yearsOfExperience) {
+          dataToSubmit.yearsOfExperience = parseInt(registrationFormData.yearsOfExperience)
+        }
+        if (registrationFormData.languagesSpoken) {
+          dataToSubmit.languagesSpoken = registrationFormData.languagesSpoken
+        }
+        if (registrationFormData.areasFamiliar.length > 0) {
+          dataToSubmit.areasFamiliar = registrationFormData.areasFamiliar
+        }
+        if (registrationFormData.vehicleType) {
+          dataToSubmit.vehicleType = registrationFormData.vehicleType
+        }
+        if (registrationFormData.bankName) {
+          dataToSubmit.bankName = registrationFormData.bankName
+        }
+        if (registrationFormData.bankBranch) {
+          dataToSubmit.bankBranch = registrationFormData.bankBranch
+        }
+        if (registrationFormData.accountHolderName) {
+          dataToSubmit.accountHolderName = registrationFormData.accountHolderName
+        }
+        if (registrationFormData.accountNumber) {
+          dataToSubmit.accountNumber = registrationFormData.accountNumber
+        }
+        // Add driver-specific file IDs
+        if (drivingLicenceFrontId) {
+          dataToSubmit.drivingLicenceFront = drivingLicenceFrontId
+        }
+        if (drivingLicenceBackId) {
+          dataToSubmit.drivingLicenceBack = drivingLicenceBackId
+        }
+        if (vehicleRegistrationBookId) {
+          dataToSubmit.vehicleRegistrationBook = vehicleRegistrationBookId
+        }
+        if (revenueLicenceId) {
+          dataToSubmit.revenueLicence = revenueLicenceId
+        }
+        if (insuranceCardId) {
+          dataToSubmit.insuranceCard = insuranceCardId
+        }
+        if (vehiclePhotoFrontId) {
+          dataToSubmit.vehiclePhotoFront = vehiclePhotoFrontId
+        }
+        if (vehiclePhotoBackId) {
+          dataToSubmit.vehiclePhotoBack = vehiclePhotoBackId
+        }
+        if (vehiclePhotoSideId) {
+          dataToSubmit.vehiclePhotoSide = vehiclePhotoSideId
+        }
+        if (vehiclePhotoInteriorId) {
+          dataToSubmit.vehiclePhotoInterior = vehiclePhotoInteriorId
+        }
       }
 
       const endpoint = registrationType === 'driver' ? '/api/drivers' : '/api/guides'
@@ -1127,6 +1325,494 @@ export default function RegistrationPage() {
                           />
                         </div>
                       )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Driver-specific fields */}
+              {registrationType === 'driver' && (
+                <>
+                  {/* Driving Licence Details */}
+                  <div className="form-section-header">
+                    <h3>{t('registration.drivingLicenceDetails') || 'Driving Licence Details'}</h3>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="drivingLicenceFront">
+                        {t('registration.drivingLicenceFront') || 'Driving Licence (Front)'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="drivingLicenceFront"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('drivingLicenceFront', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="drivingLicenceFront" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.drivingLicenceFront && (
+                          <span className="file-name">
+                            {registrationFormData.drivingLicenceFront.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.drivingLicenceFront && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.drivingLicenceFront}
+                            alt="Driving Licence Front preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="drivingLicenceBack">
+                        {t('registration.drivingLicenceBack') || 'Driving Licence (Back)'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="drivingLicenceBack"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('drivingLicenceBack', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="drivingLicenceBack" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.drivingLicenceBack && (
+                          <span className="file-name">
+                            {registrationFormData.drivingLicenceBack.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.drivingLicenceBack && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.drivingLicenceBack}
+                            alt="Driving Licence Back preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Tour Driving Experience */}
+                  <div className="form-section-header">
+                    <h3>{t('registration.tourDrivingExperience') || 'Tour Driving Experience'}</h3>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="yearsOfExperience">
+                        {t('registration.yearsOfExperience') || 'Years of Tour Driving Experience'}
+                      </label>
+                      <input
+                        type="number"
+                        id="yearsOfExperience"
+                        min="0"
+                        max="50"
+                        value={registrationFormData.yearsOfExperience}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            yearsOfExperience: e.target.value,
+                          })
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="languagesSpoken">
+                        {t('registration.languagesSpoken') || 'Languages Spoken'}
+                      </label>
+                      <input
+                        type="text"
+                        id="languagesSpoken"
+                        placeholder="e.g., English, Sinhala, Tamil"
+                        value={registrationFormData.languagesSpoken}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            languagesSpoken: e.target.value,
+                          })
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>{t('registration.areasFamiliar') || 'Areas Familiar With'}</label>
+                    <div className="checkbox-group">
+                      {[
+                        { value: 'western_province', label: 'Western Province' },
+                        { value: 'hill_country', label: 'Hill Country' },
+                        { value: 'cultural_triangle', label: 'Cultural Triangle' },
+                        { value: 'south_coast', label: 'South Coast' },
+                        { value: 'east_coast', label: 'East Coast' },
+                        { value: 'entire_country', label: 'Entire Country' },
+                      ].map((area) => (
+                        <label key={area.value} className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={registrationFormData.areasFamiliar.includes(area.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setRegistrationFormData({
+                                  ...registrationFormData,
+                                  areasFamiliar: [...registrationFormData.areasFamiliar, area.value],
+                                })
+                              } else {
+                                setRegistrationFormData({
+                                  ...registrationFormData,
+                                  areasFamiliar: registrationFormData.areasFamiliar.filter(
+                                    (a) => a !== area.value,
+                                  ),
+                                })
+                              }
+                            }}
+                          />
+                          {t(`registration.areas.${area.value}`) || area.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Vehicle Details */}
+                  <div className="form-section-header">
+                    <h3>{t('registration.vehicleDetails') || 'Vehicle Details'}</h3>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="vehicleType">
+                      {t('registration.vehicleType') || 'Vehicle Type'}
+                    </label>
+                    <select
+                      id="vehicleType"
+                      value={registrationFormData.vehicleType}
+                      onChange={(e) =>
+                        setRegistrationFormData({
+                          ...registrationFormData,
+                          vehicleType: e.target.value,
+                        })
+                      }
+                      className="form-input"
+                    >
+                      <option value="">{t('registration.selectVehicleType') || '-- Select Vehicle Type --'}</option>
+                      <option value="car">{t('registration.car') || 'Car'}</option>
+                      <option value="van">{t('registration.van') || 'Van'}</option>
+                      <option value="bus">{t('registration.bus') || 'Bus'}</option>
+                    </select>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="vehicleRegistrationBook">
+                        {t('registration.vehicleRegistrationBook') || 'Vehicle Registration Book (Copy)'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="vehicleRegistrationBook"
+                          accept="image/*,.pdf"
+                          onChange={(e) =>
+                            handleFileChange('vehicleRegistrationBook', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="vehicleRegistrationBook" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.vehicleRegistrationBook && (
+                          <span className="file-name">
+                            {registrationFormData.vehicleRegistrationBook.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="revenueLicence">
+                        {t('registration.revenueLicence') || 'Revenue Licence (Copy)'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="revenueLicence"
+                          accept="image/*,.pdf"
+                          onChange={(e) =>
+                            handleFileChange('revenueLicence', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="revenueLicence" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.revenueLicence && (
+                          <span className="file-name">
+                            {registrationFormData.revenueLicence.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="insuranceCard">
+                      {t('registration.insuranceCard') || 'Insurance Card (Copy)'}
+                    </label>
+                    <div className="file-upload-wrapper">
+                      <input
+                        type="file"
+                        id="insuranceCard"
+                        accept="image/*,.pdf"
+                        onChange={(e) =>
+                          handleFileChange('insuranceCard', e.target.files?.[0] || null)
+                        }
+                        className="file-input"
+                      />
+                      <label htmlFor="insuranceCard" className="file-upload-label">
+                        {t('registration.chooseFile') || 'Choose File'}
+                      </label>
+                      {registrationFormData.insuranceCard && (
+                        <span className="file-name">
+                          {registrationFormData.insuranceCard.name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vehicle Photos */}
+                  <div className="form-section-subheader">
+                    <h4>{t('registration.vehiclePhotos') || 'Vehicle Photos'}</h4>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="vehiclePhotoFront">
+                        {t('registration.vehiclePhotoFront') || 'Front View'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="vehiclePhotoFront"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('vehiclePhotoFront', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="vehiclePhotoFront" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.vehiclePhotoFront && (
+                          <span className="file-name">
+                            {registrationFormData.vehiclePhotoFront.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.vehiclePhotoFront && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.vehiclePhotoFront}
+                            alt="Vehicle Front preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="vehiclePhotoBack">
+                        {t('registration.vehiclePhotoBack') || 'Back View'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="vehiclePhotoBack"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('vehiclePhotoBack', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="vehiclePhotoBack" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.vehiclePhotoBack && (
+                          <span className="file-name">
+                            {registrationFormData.vehiclePhotoBack.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.vehiclePhotoBack && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.vehiclePhotoBack}
+                            alt="Vehicle Back preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="vehiclePhotoSide">
+                        {t('registration.vehiclePhotoSide') || 'Side View'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="vehiclePhotoSide"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('vehiclePhotoSide', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="vehiclePhotoSide" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.vehiclePhotoSide && (
+                          <span className="file-name">
+                            {registrationFormData.vehiclePhotoSide.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.vehiclePhotoSide && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.vehiclePhotoSide}
+                            alt="Vehicle Side preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="vehiclePhotoInterior">
+                        {t('registration.vehiclePhotoInterior') || 'Interior View'}
+                      </label>
+                      <div className="file-upload-wrapper">
+                        <input
+                          type="file"
+                          id="vehiclePhotoInterior"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleFileChange('vehiclePhotoInterior', e.target.files?.[0] || null)
+                          }
+                          className="file-input"
+                        />
+                        <label htmlFor="vehiclePhotoInterior" className="file-upload-label">
+                          {t('registration.chooseFile') || 'Choose File'}
+                        </label>
+                        {registrationFormData.vehiclePhotoInterior && (
+                          <span className="file-name">
+                            {registrationFormData.vehiclePhotoInterior.name}
+                          </span>
+                        )}
+                      </div>
+                      {imagePreviews.vehiclePhotoInterior && (
+                        <div className="image-preview">
+                          <Image
+                            src={imagePreviews.vehiclePhotoInterior}
+                            alt="Vehicle Interior preview"
+                            width={200}
+                            height={200}
+                            className="preview-image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bank & Payment Information */}
+                  <div className="form-section-header">
+                    <h3>{t('registration.bankPaymentInfo') || 'Bank & Payment Information'}</h3>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="bankName">
+                        {t('registration.bankName') || 'Bank Name'}
+                      </label>
+                      <input
+                        type="text"
+                        id="bankName"
+                        value={registrationFormData.bankName}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            bankName: e.target.value,
+                          })
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="bankBranch">
+                        {t('registration.bankBranch') || 'Branch'}
+                      </label>
+                      <input
+                        type="text"
+                        id="bankBranch"
+                        value={registrationFormData.bankBranch}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            bankBranch: e.target.value,
+                          })
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="accountHolderName">
+                        {t('registration.accountHolderName') || 'Account Holder Name'}
+                      </label>
+                      <input
+                        type="text"
+                        id="accountHolderName"
+                        value={registrationFormData.accountHolderName}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            accountHolderName: e.target.value,
+                          })
+                        }
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="accountNumber">
+                        {t('registration.accountNumber') || 'Account Number'}
+                      </label>
+                      <input
+                        type="text"
+                        id="accountNumber"
+                        value={registrationFormData.accountNumber}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            accountNumber: e.target.value,
+                          })
+                        }
+                        className="form-input"
+                      />
                     </div>
                   </div>
                 </>
