@@ -107,6 +107,171 @@ export const Drivers: CollectionConfig = {
         description: 'Profile Photo',
       },
     },
+    // Driving Licence Details
+    {
+      name: 'drivingLicenceFront',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Driving Licence - Front Side',
+      },
+    },
+    {
+      name: 'drivingLicenceBack',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Driving Licence - Back Side',
+      },
+    },
+    // Tour Driving Experience
+    {
+      name: 'yearsOfExperience',
+      type: 'number',
+      required: false,
+      min: 0,
+      max: 50,
+      admin: {
+        description: 'Years of Tour Driving Experience',
+      },
+    },
+    {
+      name: 'languagesSpoken',
+      type: 'text',
+      required: false,
+      admin: {
+        description: 'Languages Spoken (comma separated)',
+      },
+    },
+    {
+      name: 'areasFamiliar',
+      type: 'select',
+      hasMany: true,
+      required: false,
+      options: [
+        { label: 'Western Province', value: 'western_province' },
+        { label: 'Hill Country', value: 'hill_country' },
+        { label: 'Cultural Triangle', value: 'cultural_triangle' },
+        { label: 'South Coast', value: 'south_coast' },
+        { label: 'East Coast', value: 'east_coast' },
+        { label: 'Entire Country', value: 'entire_country' },
+      ],
+      admin: {
+        description: 'Areas Familiar With',
+      },
+    },
+    // Vehicle Details
+    {
+      name: 'vehicleType',
+      type: 'select',
+      required: false,
+      options: [
+        { label: 'Car', value: 'car' },
+        { label: 'Van', value: 'van' },
+        { label: 'Bus', value: 'bus' },
+      ],
+      admin: {
+        description: 'Vehicle Type',
+      },
+    },
+    {
+      name: 'vehicleRegistrationBook',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Vehicle Registration Book (Copy)',
+      },
+    },
+    {
+      name: 'revenueLicence',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Revenue Licence (Copy)',
+      },
+    },
+    {
+      name: 'insuranceCard',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Insurance Card (Copy)',
+      },
+    },
+    {
+      name: 'vehiclePhotoFront',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Vehicle Photo - Front',
+      },
+    },
+    {
+      name: 'vehiclePhotoBack',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Vehicle Photo - Back',
+      },
+    },
+    {
+      name: 'vehiclePhotoSide',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Vehicle Photo - Side',
+      },
+    },
+    {
+      name: 'vehiclePhotoInterior',
+      type: 'upload',
+      relationTo: 'media',
+      required: false,
+      admin: {
+        description: 'Vehicle Photo - Interior',
+      },
+    },
+    // Bank & Payment Information
+    {
+      name: 'bankName',
+      type: 'text',
+      required: false,
+      admin: {
+        description: 'Bank Name',
+      },
+    },
+    {
+      name: 'bankBranch',
+      type: 'text',
+      required: false,
+      admin: {
+        description: 'Bank Branch',
+      },
+    },
+    {
+      name: 'accountHolderName',
+      type: 'text',
+      required: false,
+      admin: {
+        description: 'Account Holder Name',
+      },
+    },
+    {
+      name: 'accountNumber',
+      type: 'text',
+      required: false,
+      admin: {
+        description: 'Account Number',
+      },
+    },
   ],
   hooks: {
     afterChange: [
@@ -152,6 +317,21 @@ export const Drivers: CollectionConfig = {
                 })
               : 'Not provided'
 
+            // Format areas familiar
+            const areasFamiliarText = doc.areasFamiliar && Array.isArray(doc.areasFamiliar)
+              ? (doc.areasFamiliar as string[]).map(area => {
+                  const areaLabels: Record<string, string> = {
+                    'western_province': 'Western Province',
+                    'hill_country': 'Hill Country',
+                    'cultural_triangle': 'Cultural Triangle',
+                    'south_coast': 'South Coast',
+                    'east_coast': 'East Coast',
+                    'entire_country': 'Entire Country'
+                  }
+                  return areaLabels[area] || area
+                }).join(', ')
+              : 'Not specified'
+
             // Build email content
             const emailSubject = `New Driver Registration: ${doc.fullName}`
             const emailText = `
@@ -172,6 +352,20 @@ ${doc.emailAddress ? `- Email Address: ${doc.emailAddress}` : ''}
 Emergency Contact:
 - Name: ${doc.emergencyContactName}
 - Contact Number: ${doc.emergencyContactNumber}
+
+Tour Driving Experience:
+${doc.yearsOfExperience ? `- Years of Experience: ${doc.yearsOfExperience}` : ''}
+${doc.languagesSpoken ? `- Languages Spoken: ${doc.languagesSpoken}` : ''}
+- Areas Familiar With: ${areasFamiliarText}
+
+Vehicle Details:
+${doc.vehicleType ? `- Vehicle Type: ${doc.vehicleType}` : '- Vehicle Type: Not specified'}
+
+Bank & Payment Information:
+${doc.bankName ? `- Bank Name: ${doc.bankName}` : ''}
+${doc.bankBranch ? `- Branch: ${doc.bankBranch}` : ''}
+${doc.accountHolderName ? `- Account Holder: ${doc.accountHolderName}` : ''}
+${doc.accountNumber ? `- Account Number: ${doc.accountNumber}` : ''}
 
 ${profilePhotoUrl ? `Profile Photo: ${profilePhotoUrl}` : 'Profile Photo: Not provided'}
 
@@ -221,6 +415,28 @@ Registration Date: ${new Date().toLocaleString('en-US', { dateStyle: 'full', tim
         <div class="field"><span class="field-label">Name:</span> ${doc.emergencyContactName}</div>
         <div class="field"><span class="field-label">Contact Number:</span> ${doc.emergencyContactNumber}</div>
       </div>
+      
+      <div class="section">
+        <div class="section-title">Tour Driving Experience</div>
+        ${doc.yearsOfExperience ? `<div class="field"><span class="field-label">Years of Experience:</span> ${doc.yearsOfExperience}</div>` : ''}
+        ${doc.languagesSpoken ? `<div class="field"><span class="field-label">Languages Spoken:</span> ${doc.languagesSpoken}</div>` : ''}
+        <div class="field"><span class="field-label">Areas Familiar With:</span> ${areasFamiliarText}</div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">Vehicle Details</div>
+        <div class="field"><span class="field-label">Vehicle Type:</span> ${doc.vehicleType || 'Not specified'}</div>
+      </div>
+      
+      ${doc.bankName || doc.bankBranch || doc.accountHolderName || doc.accountNumber ? `
+      <div class="section">
+        <div class="section-title">Bank & Payment Information</div>
+        ${doc.bankName ? `<div class="field"><span class="field-label">Bank Name:</span> ${doc.bankName}</div>` : ''}
+        ${doc.bankBranch ? `<div class="field"><span class="field-label">Branch:</span> ${doc.bankBranch}</div>` : ''}
+        ${doc.accountHolderName ? `<div class="field"><span class="field-label">Account Holder:</span> ${doc.accountHolderName}</div>` : ''}
+        ${doc.accountNumber ? `<div class="field"><span class="field-label">Account Number:</span> ${doc.accountNumber}</div>` : ''}
+      </div>
+      ` : ''}
       
       ${profilePhotoUrl ? `<div class="section"><div class="section-title">Profile Photo</div><div class="field"><a href="${profilePhotoUrl}" target="_blank">View Profile Photo</a></div></div>` : ''}
       
